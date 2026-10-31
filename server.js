@@ -12,7 +12,17 @@ const redis = Redis.fromEnv();
 
 app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
-app.get('/bg.jpg', (req, res) => res.sendFile(fileURLToPath(new URL('./bg.jpg', import.meta.url))));
+app.get('/bg.jpg', (req, res) => {
+  const imagePath = fileURLToPath(new URL('./bg.jpg', import.meta.url));
+  res.set({
+    'Content-Type': 'image/jpeg',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    'X-Content-Type-Options': 'nosniff'
+  });
+  res.sendFile(imagePath, error => {
+    if (error) console.error('Background image failed to load:', error.message);
+  });
+});
 
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -144,7 +154,7 @@ function layout(title, body, extra = '') {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
-html{background:#1a0f2e url('/bg.jpg') center top / cover no-repeat;background-attachment:scroll}
+html{background:#1a0f2e url('/bg.jpg?v=20261031-1') center center / cover no-repeat;background-attachment:scroll}
 html,body{margin:0;padding:0;min-height:100vh;
   font:16px/1.55 "Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:#f0eaff;
@@ -153,18 +163,17 @@ html,body{margin:0;padding:0;min-height:100vh;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Background: CSS layer is more reliable than a fixed IMG on mobile browsers */
-body{position:relative;isolation:isolate}
+/* Explicit image layer plus a versioned root-background fallback for mobile browsers */
+body{position:relative;isolation:isolate;background:#1a0f2e}
 .bg-image {
   position: fixed;
   inset: 0;
+  display: block;
   width: 100vw;
   height: 100vh;
   height: 100dvh;
-  background-image: url('/bg.jpg');
-  background-position: center center;
-  background-size: cover;
-  background-repeat: no-repeat;
+  object-fit: cover;
+  object-position: center center;
   z-index: 0;
   pointer-events: none;
 }
@@ -207,7 +216,7 @@ body{position:relative;isolation:isolate}
 /* App Layout */
 body{display:grid;place-items:center;padding:20px 20px 110px}
 main{position:relative;z-index:1;width:100%;max-width:480px;
-  background:rgba(20,25,45,0.85);
+  background:rgba(20,25,45,0.34);
   border:1px solid rgba(255,255,255,0.15);
   border-radius:24px;padding:24px;
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
@@ -230,7 +239,7 @@ h3{margin:0 0 8px;font-size:18px}
 
 label{display:block;margin:0 0 16px;font-size:14px;color:#cbd5e1}
 input,textarea{width:100%;margin-top:6px;padding:14px;border-radius:14px;
-  border:1px solid rgba(255,255,255,0.1);background:rgba(10,15,30,0.6);color:#fff;font:inherit}
+  border:1px solid rgba(255,255,255,0.1);background:rgba(10,15,30,0.20);color:#fff;font:inherit}
 input:focus,textarea:focus{outline:none;border-color:#ffd166;
   box-shadow:0 0 0 3px rgba(255,209,102,.2)}
 textarea{resize:vertical;min-height:140px}
@@ -252,7 +261,7 @@ a:hover{text-decoration:underline}
 
 .row{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;
   padding:14px;border:1px solid rgba(255,255,255,0.12);border-radius:16px;margin-bottom:12px;
-  background:rgba(5,12,28,0.72)}
+  background:rgba(5,12,28,0.28)}
 .row .info{min-width:0}
 .row .participant-link{display:inline-flex;align-items:center;margin-top:9px;padding:8px 11px;
   border-radius:9px;background:rgba(143,188,255,0.12);font-size:13px;word-break:normal}
@@ -265,9 +274,9 @@ a:hover{text-decoration:underline}
 .big{font-size:36px;font-weight:800;color:#ffd166;margin:24px 0;text-align:center;
   text-shadow:0 0 30px rgba(255,209,102,.6)}
 .center{text-align:center}
-.err{background:rgba(59,22,32,0.8);border:1px solid #6b2436;color:#ffc9d3;padding:14px;
+.err{background:rgba(59,22,32,0.30);border:1px solid rgba(255,125,150,.55);color:#ffe0e7;padding:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   border-radius:14px;margin-bottom:16px}
-.ok{background:rgba(18,52,31,0.8);border:1px solid #1f6b3a;color:#baf5cf;padding:14px;
+.ok{background:rgba(18,52,31,0.30);border:1px solid rgba(115,235,160,.5);color:#d8ffe6;padding:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   border-radius:14px;margin-bottom:16px}
 .url{display:block;padding:10px 12px;background:rgba(0,0,0,0.4);border:1px dashed rgba(255,255,255,0.2);
   border-radius:10px;word-break:break-all;font-family:ui-monospace,monospace;
@@ -278,7 +287,7 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 .modal{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px}
 .modal[hidden]{display:none}
 .modal-bg{position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
-.modal-card{position:relative;width:100%;max-width:400px;background:rgba(20,25,45,0.95);
+.modal-card{position:relative;width:100%;max-width:400px;background:rgba(20,25,45,0.48);
   border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:24px;
   box-shadow:0 25px 70px rgba(0,0,0,.8);max-height:calc(100vh - 40px);overflow-y:auto}
 .modal-card a,.modal-card button{display:flex;align-items:center;gap:12px;width:100%;
@@ -303,7 +312,7 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 .bottom-nav a.active{color:#ffd166}
 .app-heading{font-size:30px;text-align:center;margin:8px 0 10px;color:#ffd166}
 .app-intro{text-align:center;color:#cbd5e1;margin:0 0 20px}
-.app-card{background:rgba(5,15,34,.72);border:1px solid rgba(255,209,102,.24);border-radius:18px;padding:18px;margin:14px 0}
+.app-card{background:rgba(5,15,34,.30);border:1px solid rgba(255,209,102,.30);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:18px;padding:18px;margin:14px 0}
 .app-card h2{color:#ffd166}
 .app-card p{color:#cbd5e1}
 .app-cta{display:block;text-align:center;padding:15px 18px;border-radius:14px;background:linear-gradient(180deg,#e7b84d,#c58a22);color:#111827;font-weight:800;text-decoration:none;margin:12px 0}
@@ -314,7 +323,7 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 </style></head><body>
 
 <!-- THIS LOADS YOUR LOCAL IMAGE -->
-<div class="bg-image" aria-hidden="true"></div>
+<img class="bg-image" src="/bg.jpg?v=20261031-1" alt="" aria-hidden="true" fetchpriority="high" decoding="async">
 <div class="bg-overlay"></div>
 <div class="snow-layer"></div>
 
