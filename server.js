@@ -144,13 +144,18 @@ html,body{margin:0;padding:0;min-height:100vh;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 1. The Background Image pinned to the back (Loads from YOUR local file) */
+/* Background: CSS layer is more reliable than a fixed IMG on mobile browsers */
+body{position:relative;isolation:isolate}
 .bg-image {
   position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-image: url('/bg.jpg');
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
   z-index: 0;
   pointer-events: none;
 }
@@ -300,7 +305,7 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 </style></head><body>
 
 <!-- THIS LOADS YOUR LOCAL IMAGE -->
-<img class="bg-image" src="/bg.jpg" alt="Winter Background">
+<div class="bg-image" aria-hidden="true"></div>
 <div class="bg-overlay"></div>
 <div class="snow-layer"></div>
 
