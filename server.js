@@ -431,7 +431,7 @@ app.get('/', (req, res) => {
         <label>მონაწილეები — თითო სახელი ცალკე ხაზზე
           <textarea name="names" required placeholder="ანა\nდავითი\nსოფო"></textarea>
         </label>
-        <button type="submit">Create საიდუმლო სანტა</button>
+        <button type="submit">გათამაშების შექმნა</button>
       </form>
     </section>
     <section class="app-card">
