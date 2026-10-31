@@ -309,8 +309,6 @@ ${extra}
 <nav class="bottom-nav" aria-label="Main navigation">
   <a href="/?tab=home" data-tab="home"><span>⌂</span>მთავარი</a>
   <a href="/?tab=exchanges" data-tab="exchanges"><span>▦</span>გათამაშებები</a>
-  <a href="/?tab=gifts" data-tab="gifts"><span>🎁</span>ჩემი საჩუქარი</a>
-  
 </nav>
 <script>
 (function(){
@@ -324,14 +322,10 @@ ${extra}
   if(path.indexOf('/admin/')===0){
     save('ss_exchanges',{title:(document.querySelector('main h1')||{}).textContent||'საიდუმლო სანტა',url:path});
   }
-  if(path.indexOf('/r/')===0){
-    save('ss_gifts',{title:(document.querySelector('main h1')||{}).textContent||'საიდუმლო სანტა',url:path});
-  }
   var tab=new URLSearchParams(window.location.search).get('tab')||'home';
   document.querySelectorAll('.bottom-nav a').forEach(function(a){
     if(a.dataset.tab===tab && path==='/') a.classList.add('active');
     if(path.indexOf('/admin/')===0 && a.dataset.tab==='exchanges') a.classList.add('active');
-    if(path.indexOf('/r/')===0 && a.dataset.tab==='gifts') a.classList.add('active');
   });
   function renderList(id,key,empty,label){
     var box=document.getElementById(id); if(!box) return;
@@ -345,7 +339,6 @@ ${extra}
     });
   }
   renderList('saved-exchanges','ss_exchanges','ჯერ გათამაშება არ შეგიქმნია.','საიდუმლო სანტა');
-  renderList('saved-gifts','ss_gifts','პირადი ბმული ჯერ არ გაგიხსნია.','ჩემი საჩუქარი');
   var giftForm=document.getElementById('gift-link-form');
   if(giftForm) giftForm.addEventListener('submit',function(e){
     e.preventDefault();
@@ -407,7 +400,7 @@ function findParticipantByToken(token) {
 /* ---------------- routes ---------------- */
 
 app.get('/', (req, res) => {
-  const tab = ['home', 'exchanges', 'gifts'].includes(req.query.tab) ? req.query.tab : 'home';
+  const tab = ['home', 'exchanges'].includes(req.query.tab) ? req.query.tab : 'home';
   if (tab === 'exchanges') {
     return res.send(layout('ჩემი გათამაშებები', `
       <div class="banner">🎄 საიდუმლო სანტა</div>
@@ -416,15 +409,6 @@ app.get('/', (req, res) => {
       <section class="app-card"><h2>შენი გათამაშებები</h2><div id="saved-exchanges">იტვირთება…</div></section>
       <p class="muted center" style="font-size:13px">ბმულები ინახება ამ მოწყობილობაზე.</p>
       <a class="app-cta" href="/">ახალი გათამაშების შექმნა</a>`));
-  }
-  if (tab === 'gifts') {
-    return res.send(layout('ჩემი საჩუქარი', `
-      <div class="banner">🎄 შენი საიდუმლო დაცულია</div>
-      <h1 class="app-heading">ჩემი საჩუქარი</h1>
-      <p class="app-intro">გათამაშებები, რომლებშიც მონაწილეობ.</p>
-      <section class="app-card"><h2>შენი ბმულები</h2><div id="saved-gifts">იტვირთება…</div></section>
-      <p class="muted center" style="font-size:13px">პირადი ბმული მხოლოდ შენთვისაა — არავის გაუზიარო.</p>
-      <a class="app-cta" href="/">მთავარზე დაბრუნება</a>`));
   }
   res.send(layout('საიდუმლო სანტა', `
     <div class="banner">🎄 გაუზიარე სიხარული მეგობრებს 🎁</div>
