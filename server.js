@@ -1,4 +1,4 @@
-// server.js — Surprise Santa (Upstash Redis + Georgian UI + admin hand-off + sharing)
+// server.js — Surprise Santa (Upstash Redis + Georgian UI + admin hand-off + sharing + image background)
 import express from 'express';
 import crypto from 'node:crypto';
 import { Redis } from '@upstash/redis';
@@ -75,8 +75,8 @@ function makeAssignments(people) {
 
 function layout(title, body, extra = '') {
   return `<!doctype html><html lang="ka"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#1a0a2e">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a1020">
 <meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -87,135 +87,140 @@ html,body{height:100%}
 body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;
   font:16px/1.55 "Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:#f0eaff;
-  background:linear-gradient(160deg,#0d0620 0%,#1a0a2e 35%,#2a0d1a 70%,#0d0620 100%);
-  background-attachment:fixed;
-  overflow-x:hidden}
+  /* Background Image Setup */
+  background-image: url('/bg.jpg');
+  background-size: cover;
+  background-position: center bottom;
+  background-attachment: fixed;
+  background-color: #0d1b2a;
+  overflow-x:hidden;
+  -webkit-tap-highlight-color: transparent;
+}
 
-/* --- New Year atmosphere layers --- */
-.bg-glow,.bg-stars,.bg-snow{position:fixed;inset:0;pointer-events:none;z-index:0}
-.bg-glow{background:
-  radial-gradient(900px 600px at 12% 8%, rgba(255,190,90,.13), transparent 60%),
-  radial-gradient(700px 500px at 88% 92%, rgba(230,70,110,.13), transparent 60%),
-  radial-gradient(500px 400px at 50% 50%, rgba(160,80,220,.08), transparent 70%)}
-.bg-stars{
+/* Dark gradient overlay so text is readable over the image */
+body::before{content:'';position:fixed;inset:0;
+  background:linear-gradient(to bottom, rgba(10,15,30,0.3) 0%, rgba(10,15,30,0.7) 50%, rgba(10,15,30,0.95) 100%);
+  z-index:-2;pointer-events:none}
+
+/* --- Animated Snowflakes --- */
+.snow-layer{position:fixed;inset:0;pointer-events:none;z-index:-1}
+.snow-layer::after{content:'';position:absolute;top:-2000px;left:0;right:0;bottom:0;
   background-image:
-    radial-gradient(1px 1px at 20px 30px, #fff, transparent),
-    radial-gradient(1px 1px at 80px 90px, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 140px 40px, #ffd166, transparent),
-    radial-gradient(1px 1px at 200px 150px, #fff, transparent),
-    radial-gradient(1px 1px at 60px 180px, #fff, transparent),
-    radial-gradient(1.5px 1.5px at 250px 60px, #ffd166, transparent),
-    radial-gradient(1px 1px at 300px 210px, #fff, transparent);
-  background-size:340px 260px;background-repeat:repeat;
-  animation:twinkle 4s ease-in-out infinite alternate;opacity:.75}
-@keyframes twinkle{from{opacity:.4}to{opacity:.95}}
-.bg-snow::before,.bg-snow::after{content:'';position:absolute;inset:0;background-repeat:repeat}
-.bg-snow::before{
-  background-image:
-    radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,.9), transparent),
-    radial-gradient(1.5px 1.5px at 60px 80px, rgba(255,255,255,.75), transparent),
-    radial-gradient(2px 2px at 100px 50px, rgba(255,255,255,.85), transparent),
-    radial-gradient(1px 1px at 150px 120px, rgba(255,255,255,.65), transparent),
-    radial-gradient(2.5px 2.5px at 220px 40px, rgba(255,255,255,.8), transparent),
-    radial-gradient(1.5px 1.5px at 280px 160px, rgba(255,255,255,.7), transparent);
-  background-size:320px 200px;
+    radial-gradient(3px 3px at 20px 30px, #fff, transparent),
+    radial-gradient(2px 2px at 80px 90px, rgba(255,255,255,.8), transparent),
+    radial-gradient(4px 4px at 140px 40px, #fff, transparent),
+    radial-gradient(2px 2px at 200px 150px, rgba(255,255,255,.7), transparent),
+    radial-gradient(3px 3px at 260px 60px, #fff, transparent);
+  background-size:300px 300px;background-repeat:repeat;
   animation:snow-fall 12s linear infinite}
-.bg-snow::after{
+.snow-layer.fast::after{
   background-image:
-    radial-gradient(1px 1px at 40px 20px, rgba(255,255,255,.6), transparent),
-    radial-gradient(1.5px 1.5px at 120px 90px, rgba(255,255,255,.5), transparent),
-    radial-gradient(1px 1px at 200px 40px, rgba(255,255,255,.55), transparent),
-    radial-gradient(1px 1px at 260px 140px, rgba(255,255,255,.5), transparent),
-    radial-gradient(1.5px 1.5px at 340px 100px, rgba(255,255,255,.55), transparent);
-  background-size:380px 240px;
-  animation:snow-fall 20s linear infinite;opacity:.7}
-@keyframes snow-fall{from{background-position:0 0}to{background-position:0 200px}}
+    radial-gradient(1.5px 1.5px at 10px 20px, rgba(255,255,255,.6), transparent),
+    radial-gradient(2px 2px at 50px 80px, #fff, transparent),
+    radial-gradient(1px 1px at 100px 50px, rgba(255,255,255,.8), transparent),
+    radial-gradient(2px 2px at 150px 120px, rgba(255,255,255,.7), transparent);
+  background-size:200px 200px;
+  animation-duration:8s;opacity:.6}
+@keyframes snow-fall{from{transform:translateY(0)}to{transform:translateY(2000px)}}
 
-/* --- Card --- */
-main{position:relative;z-index:1;width:100%;max-width:680px;
-  background:rgba(26,14,40,.82);border:1px solid rgba(90,55,105,.55);
-  border-radius:20px;padding:28px;
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  box-shadow:0 30px 80px rgba(0,0,0,.55);
-  overflow:hidden}
-main::before{content:'';position:absolute;top:0;left:20px;right:20px;height:2px;
-  background:linear-gradient(90deg,transparent,#ffd166,#e23b3b,#ffd166,transparent);
-  border-radius:0 0 2px 2px;opacity:.85}
-h1{margin:0 0 8px;font-size:26px;line-height:1.3}
+/* --- Glassmorphism Card --- */
+main{position:relative;z-index:1;width:100%;max-width:480px;
+  background:rgba(20, 25, 45, 0.75);
+  border:1px solid rgba(255, 255, 255, 0.15);
+  border-radius:24px;padding:24px;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 25px 50px rgba(0,0,0,.6);
+  overflow:hidden;
+  margin: auto;
+  min-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+main::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,#ffd166,#e23b3b,#ffd166);
+  opacity:.9}
+
+h1{margin:0 0 8px;font-size:26px;line-height:1.3;text-shadow:0 2px 10px rgba(0,0,0,0.5)}
 h1.greet{text-align:center;
   background:linear-gradient(90deg,#ffd166,#f08a5d,#ffd166);
-  -webkit-background-clip:text;background-clip:text;color:transparent}
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:none}
 h2{font-size:18px;margin:0 0 14px}
 h3{margin:0 0 8px;font-size:18px}
-.muted{color:#b3a8c9;margin:0 0 20px}
+.muted{color:#cbd5e1;margin:0 0 20px;text-shadow:0 1px 4px rgba(0,0,0,0.5)}
 .banner{display:block;text-align:center;font-size:14px;color:#ffd166;
-  margin:0 0 18px;letter-spacing:.4px}
-label{display:block;margin:0 0 16px;font-size:14px;color:#c3b8d9}
-input,textarea{width:100%;margin-top:6px;padding:12px 14px;border-radius:12px;
-  border:1px solid #3a2848;background:#140b1f;color:#f0eaff;font:inherit}
-input:focus,textarea:focus{outline:none;border-color:#e23b3b;
-  box-shadow:0 0 0 3px rgba(226,59,59,.18)}
-textarea{resize:vertical;min-height:180px}
-button{padding:13px 20px;border:0;border-radius:12px;
+  margin:0 0 18px;letter-spacing:.4px;font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,0.5)}
+
+label{display:block;margin:0 0 16px;font-size:14px;color:#cbd5e1}
+input,textarea{width:100%;margin-top:6px;padding:14px;border-radius:14px;
+  border:1px solid rgba(255,255,255,0.1);background:rgba(10, 15, 30, 0.6);color:#fff;font:inherit}
+input:focus,textarea:focus{outline:none;border-color:#ffd166;
+  box-shadow:0 0 0 3px rgba(255,209,102,.2)}
+textarea{resize:vertical;min-height:140px}
+
+button{padding:16px 20px;border:0;border-radius:14px;
   background:linear-gradient(180deg,#e23b3b,#b81f2f);color:#fff;font-weight:700;
-  font-size:15px;cursor:pointer;font-family:inherit;
-  box-shadow:0 6px 18px rgba(226,59,59,.35);transition:transform .05s}
-button:hover{filter:brightness(1.08)}
-button:active{transform:translateY(1px)}
-button.secondary{background:#2a1d3f;box-shadow:none;color:#f0eaff;font-weight:600}
+  font-size:16px;cursor:pointer;font-family:inherit;
+  box-shadow:0 8px 20px rgba(226,59,59,.4);transition:transform .05s;
+  width:100%}
+button:hover{filter:brightness(1.1)}
+button:active{transform:translateY(2px)}
+button.secondary{background:rgba(255,255,255,0.1);box-shadow:none;color:#fff;
+  border:1px solid rgba(255,255,255,0.2);font-weight:600;padding:12px 20px}
+button.secondary:hover{background:rgba(255,255,255,0.15)}
+
 a{color:#8fbcff;word-break:break-all;text-decoration:none}
 a:hover{text-decoration:underline}
+
 .row{display:flex;gap:12px;align-items:center;justify-content:space-between;
-  padding:12px 14px;border:1px solid #3a2848;border-radius:12px;margin-bottom:10px;
-  background:rgba(20,11,31,.55);flex-wrap:wrap}
+  padding:14px;border:1px solid rgba(255,255,255,0.1);border-radius:14px;margin-bottom:12px;
+  background:rgba(0,0,0,0.3);flex-wrap:wrap}
 .row .info{flex:1;min-width:0}
 .row .actions{display:flex;gap:8px;flex-wrap:wrap}
-.name{font-weight:700;margin-bottom:4px}
-.tag{font-size:12px;color:#9d92b5;margin-top:4px}
-.big{font-size:34px;font-weight:800;color:#ffd166;margin:18px 0;text-align:center;
-  text-shadow:0 0 30px rgba(255,209,102,.4)}
+.name{font-weight:700;margin-bottom:4px;font-size:16px}
+.tag{font-size:12px;color:#9ca3af;margin-top:4px}
+.big{font-size:36px;font-weight:800;color:#ffd166;margin:24px 0;text-align:center;
+  text-shadow:0 0 30px rgba(255,209,102,.6)}
 .center{text-align:center}
-.err{background:#3b1620;border:1px solid #6b2436;color:#ffc9d3;padding:12px 16px;
-  border-radius:12px;margin-bottom:16px}
-.ok{background:#12341f;border:1px solid #1f6b3a;color:#baf5cf;padding:12px 16px;
-  border-radius:12px;margin-bottom:16px}
-.url{display:block;padding:10px 12px;background:#140b1f;border:1px dashed #3a2848;
+.err{background:rgba(59, 22, 32, 0.8);border:1px solid #6b2436;color:#ffc9d3;padding:14px;
+  border-radius:14px;margin-bottom:16px}
+.ok{background:rgba(18, 52, 31, 0.8);border:1px solid #1f6b3a;color:#baf5cf;padding:14px;
+  border-radius:14px;margin-bottom:16px}
+.url{display:block;padding:10px 12px;background:rgba(0,0,0,0.4);border:1px dashed rgba(255,255,255,0.2);
   border-radius:10px;word-break:break-all;font-family:ui-monospace,monospace;
   font-size:13px;color:#a8c8ff;margin:8px 0}
-hr{border:0;border-top:1px solid #3a2848;margin:22px 0}
+hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 
 /* --- Share modal --- */
 .modal{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px}
 .modal[hidden]{display:none}
-.modal-bg{position:absolute;inset:0;background:rgba(10,4,18,.7);
+.modal-bg{position:absolute;inset:0;background:rgba(0,0,0,0.6);
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.modal-card{position:relative;width:100%;max-width:400px;background:#1e1330;
-  border:1px solid #3a2848;border-radius:18px;padding:22px;
-  box-shadow:0 25px 70px rgba(0,0,0,.6);max-height:calc(100vh - 40px);overflow-y:auto}
+.modal-card{position:relative;width:100%;max-width:400px;background:rgba(20, 25, 45, 0.95);
+  border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:24px;
+  box-shadow:0 25px 70px rgba(0,0,0,.8);max-height:calc(100vh - 40px);overflow-y:auto}
 .modal-card a,.modal-card button{display:flex;align-items:center;gap:12px;width:100%;
-  padding:12px 16px;margin-bottom:8px;border-radius:10px;border:1px solid #3a2848;
-  background:#140b1f;color:#f0eaff;text-decoration:none;font-family:inherit;
+  padding:14px 16px;margin-bottom:10px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.05);color:#fff;text-decoration:none;font-family:inherit;
   font-size:15px;cursor:pointer;text-align:left;font-weight:500}
-.modal-card a:hover,.modal-card button:hover{background:#2a1d3f}
+.modal-card a:hover,.modal-card button:hover{background:rgba(255,255,255,0.1)}
 .modal-card .close-x{position:absolute;top:14px;right:16px;width:32px;height:32px;
   padding:0;display:grid;place-items:center;background:transparent;border:0;
-  font-size:20px;color:#b3a8c9;box-shadow:none;border-radius:50%}
-.modal-card .close-x:hover{background:#2a1d3f;color:#f0eaff}
+  font-size:20px;color:#9ca3af;box-shadow:none;border-radius:50%;width:auto}
+.modal-card .close-x:hover{color:#fff}
 
-@media (prefers-reduced-motion: reduce){
-  .bg-stars,.bg-snow::before,.bg-snow::after{animation:none}
-}
 @media (max-width:480px){
-  main{padding:22px 18px;border-radius:16px}
+  body{padding:0;place-items:end center}
+  main{border-radius:24px 24px 0 0;padding:28px 20px;min-height:90vh;border-bottom:none}
   h1{font-size:22px}
-  .big{font-size:28px}
-  .row .actions{width:100%}
+  .big{font-size:32px}
+  .row .actions{width:100%;margin-top:8px}
   .row .actions button{flex:1}
 }
 </style></head><body>
-<div class="bg-glow"></div>
-<div class="bg-stars"></div>
-<div class="bg-snow"></div>
+<div class="snow-layer"></div>
+<div class="snow-layer fast"></div>
 <main>${body}</main>
 ${extra}
 </body></html>`;
@@ -356,13 +361,13 @@ app.get('/admin/:adminToken', (req, res) => {
 
     <hr>
     <h2>ადმინისტრაციის გადაცემა</h2>
-    <p class="muted" style="margin-bottom:12px">
+    <p class="muted" style="margin-bottom:12px;font-size:14px">
       ქვემოთ ღილაკზე დაჭერით შეიქმნება ახალი ადმინ ბმული და თქვენი ახლანდელი ბმული გაუქმდება.
       შემდეგ ახალი ბმული გაუგზავნეთ ახალ ადმინისტრატორს.
     </p>
     <form method="post" action="/admin/${game.adminToken}/transfer"
       onsubmit="return confirm('ნამდვილად გსურთ ადმინისტრაციის გადაცემა? თქვენი მიმდინარე ბმული გაუქმდება.')">
-      <button type="submit">ადმინისტრაციის გადაცემა (ახალი ბმულის გენერაცია)</button>
+      <button type="submit" class="secondary">ადმინისტრაციის გადაცემა</button>
     </form>`;
 
   const extra = `
@@ -512,14 +517,14 @@ app.get('/r/:token', async (req, res) => {
     return res.send(layout('თქვენი დავალება', `
       <div class="banner">🎄 გილოცავთ ახალ წელს! 🎁</div>
       <h1 class="greet">${esc(game.title)}</h1>
-      <p class="muted center">
-        გამარჯობა, <strong>${esc(participant.name)}</strong>! მზად ხართ გაიგოთ ვის უნდა აჩუქოთ საჩუქარი?
+      <p class="muted center" style="margin-bottom:24px">
+        გამარჯობა, <strong>${esc(participant.name)}</strong>!<br>მზად ხართ გაიგოთ ვის უნდა აჩუქოთ საჩუქარი?
       </p>
       <p class="center">
         <a href="/r/${participant.token}?reveal=1"
-          style="font-size:18px;font-weight:700;display:inline-block;padding:14px 22px;
-          background:linear-gradient(180deg,#e23b3b,#b81f2f);color:#fff;border-radius:12px;
-          box-shadow:0 6px 18px rgba(226,59,59,.35);text-decoration:none">
+          style="font-size:17px;font-weight:700;display:inline-block;padding:16px 24px;
+          background:linear-gradient(180deg,#e23b3b,#b81f2f);color:#fff;border-radius:14px;
+          box-shadow:0 8px 20px rgba(226,59,59,.4);text-decoration:none;width:100%">
           ჩემი დავალების ნახვა →
         </a>
       </p>`));
@@ -534,13 +539,17 @@ app.get('/r/:token', async (req, res) => {
   res.send(layout('თქვენი დავალება', `
     <div class="banner">🎄 გილოცავთ ახალ წელს! 🎁</div>
     <h1 class="greet">${esc(game.title)}</h1>
-    <p class="muted center">
+    <p class="muted center" style="font-size:18px">
       <strong>${esc(participant.name)}</strong>, თქვენ საჩუქარს აძლევთ:
     </p>
     <div class="big">${esc(recipient.name)}</div>
     ${alreadyViewed ? '<p class="tag center">თქვენ უკვე გახსენით ეს ბმული ადრე.</p>' : ''}
-    <p class="muted center">🤫 საიდუმლოდ შეინახეთ — და ნუ გახსნით ამ ბმულს მის თანდასწრებით.</p>
-    <p class="muted center" style="margin-top:18px;font-size:14px">
+    <div style="background:rgba(255,255,255,0.05);padding:16px;border-radius:12px;margin-top:24px">
+      <p class="muted center" style="margin:0;font-size:14px">
+        🤫 საიდუმლოდ შეინახეთ — და ნუ გახსნით ამ ბმულს მის თანდასწრებით.
+      </p>
+    </div>
+    <p class="muted center" style="margin-top:24px;font-size:14px;color:#ffd166">
       ბედნიერებას გისურვებთ ახალ წელს! ✨
     </p>`));
 });
