@@ -1,4 +1,4 @@
-// server.js — Surprise Santa (Online Background + Georgian UI + Upstash)
+// server.js — Surprise Santa (Robust Background + Delete Links + Regenerate)
 import express from 'express';
 import crypto from 'node:crypto';
 import { Redis } from '@upstash/redis';
@@ -11,6 +11,12 @@ const redis = Redis.fromEnv();
 
 app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+// Disable caching so you always see the latest UI
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  next();
+});
 
 /* ---------------- storage (Upstash Redis) ---------------- */
 let db = { games: {} };
@@ -74,6 +80,7 @@ function makeAssignments(people) {
 }
 
 function layout(title, body, extra = '') {
+  // Using ?v=5 to bust CSS cache
   return `<!doctype html><html lang="ka"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0a1020">
@@ -83,27 +90,23 @@ function layout(title, body, extra = '') {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;
+html,body{margin:0;padding:0;min-height:100vh;
   font:16px/1.55 "Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:#f0eaff;
-  
-  /* Stunning New Year Background from Unsplash */
-  background-image: url('https://images.unsplash.com/photo-1543886577-520cc763ad63?q=80&w=2000&auto=format&fit=crop');
-  background-size: cover;
-  background-position: center center;
-  background-attachment: fixed;
-  background-color: #0d1b2a;
+  background-color:#0a1020;
   overflow-x:hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Dark overlay to make text readable */
-body::before{content:'';position:fixed;inset:0;
-  background:linear-gradient(to bottom, rgba(10,15,30,0.4) 0%, rgba(10,15,30,0.8) 50%, rgba(10,15,30,0.95) 100%);
+/* Fixed Background Layers */
+.bg-image{position:fixed;inset:0;
+  background-image:url('https://images.unsplash.com/photo-1543886577-520cc763ad63?q=80&w=2000&auto=format&fit=crop&v=5');
+  background-size:cover;background-position:center bottom;z-index:-3}
+.bg-overlay{position:fixed;inset:0;
+  background:linear-gradient(to bottom, rgba(10,15,30,0.4) 0%, rgba(10,15,30,0.85) 50%, rgba(10,15,30,0.98) 100%);
   z-index:-2;pointer-events:none}
 
-/* --- Animated Snowflakes --- */
+/* Animated Snow */
 .snow-layer{position:fixed;inset:0;pointer-events:none;z-index:-1}
 .snow-layer::after{content:'';position:absolute;top:-2000px;left:0;right:0;bottom:0;
   background-image:
@@ -124,29 +127,24 @@ body::before{content:'';position:fixed;inset:0;
   animation-duration:8s;opacity:.6}
 @keyframes snow-fall{from{transform:translateY(0)}to{transform:translateY(2000px)}}
 
-/* --- Glassmorphism Card --- */
+/* App Layout */
+body{display:grid;place-items:center;padding:20px}
 main{position:relative;z-index:1;width:100%;max-width:480px;
-  background:rgba(20, 25, 45, 0.75);
-  border:1px solid rgba(255, 255, 255, 0.15);
+  background:rgba(20,25,45,0.75);
+  border:1px solid rgba(255,255,255,0.15);
   border-radius:24px;padding:24px;
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   box-shadow:0 25px 50px rgba(0,0,0,.6);
   overflow:hidden;
-  margin: auto;
-  min-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
+  margin:auto;
+  min-height:85vh;
+  display:flex;flex-direction:column;justify-content:center}
 main::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;
-  background:linear-gradient(90deg,#ffd166,#e23b3b,#ffd166);
-  opacity:.9}
+  background:linear-gradient(90deg,#ffd166,#e23b3b,#ffd166);opacity:.9}
 
 h1{margin:0 0 8px;font-size:26px;line-height:1.3;text-shadow:0 2px 10px rgba(0,0,0,0.5)}
-h1.greet{text-align:center;
-  background:linear-gradient(90deg,#ffd166,#f08a5d,#ffd166);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  text-shadow:none}
+h1.greet{text-align:center;background:linear-gradient(90deg,#ffd166,#f08a5d,#ffd166);
+  -webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
 h2{font-size:18px;margin:0 0 14px}
 h3{margin:0 0 8px;font-size:18px}
 .muted{color:#cbd5e1;margin:0 0 20px;text-shadow:0 1px 4px rgba(0,0,0,0.5)}
@@ -155,7 +153,7 @@ h3{margin:0 0 8px;font-size:18px}
 
 label{display:block;margin:0 0 16px;font-size:14px;color:#cbd5e1}
 input,textarea{width:100%;margin-top:6px;padding:14px;border-radius:14px;
-  border:1px solid rgba(255,255,255,0.1);background:rgba(10, 15, 30, 0.6);color:#fff;font:inherit}
+  border:1px solid rgba(255,255,255,0.1);background:rgba(10,15,30,0.6);color:#fff;font:inherit}
 input:focus,textarea:focus{outline:none;border-color:#ffd166;
   box-shadow:0 0 0 3px rgba(255,209,102,.2)}
 textarea{resize:vertical;min-height:140px}
@@ -163,13 +161,14 @@ textarea{resize:vertical;min-height:140px}
 button{padding:16px 20px;border:0;border-radius:14px;
   background:linear-gradient(180deg,#e23b3b,#b81f2f);color:#fff;font-weight:700;
   font-size:16px;cursor:pointer;font-family:inherit;
-  box-shadow:0 8px 20px rgba(226,59,59,.4);transition:transform .05s;
-  width:100%}
+  box-shadow:0 8px 20px rgba(226,59,59,.4);transition:transform .05s;width:100%}
 button:hover{filter:brightness(1.1)}
 button:active{transform:translateY(2px)}
 button.secondary{background:rgba(255,255,255,0.1);box-shadow:none;color:#fff;
   border:1px solid rgba(255,255,255,0.2);font-weight:600;padding:12px 20px}
 button.secondary:hover{background:rgba(255,255,255,0.15)}
+button.danger{background:rgba(226,59,59,0.15);color:#ff8b8b;border:1px solid rgba(226,59,59,0.3)}
+button.danger:hover{background:rgba(226,59,59,0.25)}
 
 a{color:#8fbcff;word-break:break-all;text-decoration:none}
 a:hover{text-decoration:underline}
@@ -184,21 +183,20 @@ a:hover{text-decoration:underline}
 .big{font-size:36px;font-weight:800;color:#ffd166;margin:24px 0;text-align:center;
   text-shadow:0 0 30px rgba(255,209,102,.6)}
 .center{text-align:center}
-.err{background:rgba(59, 22, 32, 0.8);border:1px solid #6b2436;color:#ffc9d3;padding:14px;
+.err{background:rgba(59,22,32,0.8);border:1px solid #6b2436;color:#ffc9d3;padding:14px;
   border-radius:14px;margin-bottom:16px}
-.ok{background:rgba(18, 52, 31, 0.8);border:1px solid #1f6b3a;color:#baf5cf;padding:14px;
+.ok{background:rgba(18,52,31,0.8);border:1px solid #1f6b3a;color:#baf5cf;padding:14px;
   border-radius:14px;margin-bottom:16px}
 .url{display:block;padding:10px 12px;background:rgba(0,0,0,0.4);border:1px dashed rgba(255,255,255,0.2);
   border-radius:10px;word-break:break-all;font-family:ui-monospace,monospace;
   font-size:13px;color:#a8c8ff;margin:8px 0}
 hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 
-/* --- Share modal --- */
+/* Share modal */
 .modal{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px}
 .modal[hidden]{display:none}
-.modal-bg{position:absolute;inset:0;background:rgba(0,0,0,0.6);
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.modal-card{position:relative;width:100%;max-width:400px;background:rgba(20, 25, 45, 0.95);
+.modal-bg{position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px)}
+.modal-card{position:relative;width:100%;max-width:400px;background:rgba(20,25,45,0.95);
   border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:24px;
   box-shadow:0 25px 70px rgba(0,0,0,.8);max-height:calc(100vh - 40px);overflow-y:auto}
 .modal-card a,.modal-card button{display:flex;align-items:center;gap:12px;width:100%;
@@ -206,10 +204,8 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
   background:rgba(255,255,255,0.05);color:#fff;text-decoration:none;font-family:inherit;
   font-size:15px;cursor:pointer;text-align:left;font-weight:500}
 .modal-card a:hover,.modal-card button:hover{background:rgba(255,255,255,0.1)}
-.modal-card .close-x{position:absolute;top:14px;right:16px;width:32px;height:32px;
-  padding:0;display:grid;place-items:center;background:transparent;border:0;
-  font-size:20px;color:#9ca3af;box-shadow:none;border-radius:50%;width:auto}
-.modal-card .close-x:hover{color:#fff}
+.modal-card .close-x{position:absolute;top:14px;right:16px;width:32px;height:32px;padding:0;
+  display:grid;place-items:center;background:transparent;border:0;font-size:20px;color:#9ca3af;border-radius:50%;width:auto}
 
 @media (max-width:480px){
   body{padding:0;place-items:end center}
@@ -220,6 +216,8 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
   .row .actions button{flex:1}
 }
 </style></head><body>
+<div class="bg-image"></div>
+<div class="bg-overlay"></div>
 <div class="snow-layer"></div>
 <div class="snow-layer fast"></div>
 <main>${body}</main>
@@ -244,8 +242,7 @@ app.get('/', (req, res) => {
   res.send(layout('საიდუმლო სანტა', `
     <div class="banner">🎄 გილოცავთ ახალ წელს! 🎁</div>
     <h1 class="greet">საიდუმლო სანტა</h1>
-    <p class="muted">დაამატეთ მონაწილეები, შემდეგ გაუგზავნეთ თითოეულ მათგანს მისი პირადი ბმული.
-    ბმულის გახსნისას ისინი ნახავენ ვის უნდა აჩუქონ საჩუქარი.</p>
+    <p class="muted">დაამატეთ მონაწილეები, შემდეგ გაუგზავნეთ თითოეულ მათგანს მისი პირადი ბმული.</p>
     <form method="post" action="/create">
       <label>თამაშის სახელი (არასავალდებულო)
         <input name="title" maxlength="80" placeholder="საოჯახო ახალი წელი 2026">
@@ -285,9 +282,7 @@ app.post('/create', async (req, res) => {
   const pairs = makeAssignments(participants);
 
   const game = {
-    id: newToken(),
-    title,
-    adminToken: newToken(),
+    id: newToken(), title, adminToken: newToken(),
     createdAt: new Date().toISOString(),
     participants,
     assignments: Object.fromEntries(pairs.map(p => [p.giver.id, p.recipient.id])),
@@ -324,23 +319,21 @@ app.get('/admin/:adminToken', (req, res) => {
       </div>
       <div class="actions">
         <button type="button" class="secondary copy-btn" data-url="${url}">კოპირება</button>
-        <button type="button" class="share-btn"
-          data-name="${esc(p.name)}"
-          data-url="${url}"
-          data-title="${esc(game.title)}">გაზიარება</button>
+        <button type="button" class="share-btn" data-name="${esc(p.name)}" data-url="${url}" data-title="${esc(game.title)}">გაზიარება</button>
+        <form method="POST" action="/admin/${game.adminToken}/delete/${p.id}" style="margin:0;" onsubmit="return confirm('ნამდვილად გსურთ ${esc(p.name)}-ის წაშლა? თამაში ავტომატურად გადათამაშდება.')">
+          <button type="submit" class="danger">წაშლა</button>
+        </form>
       </div>
     </div>`;
   }).join('');
 
   let banner = '';
   if (req.query.transferred === '1') {
-    banner = `<div class="ok">
-      ადმინისტრაცია წარმატებით გადაეცა. გაუგზავნეთ ეს ახალი ბმული ახალ ადმინისტრატორს:
-      <span class="url">${esc(adminUrl)}</span>
-      თქვენი წინა ადმინ ბმული აღარ მუშაობს.
-    </div>`;
+    banner = `<div class="ok">ადმინისტრაცია წარმატებით გადაეცა. გაუგზავნეთ ეს ახალი ბმული ახალ ადმინისტრატორს:<br><span class="url">${esc(adminUrl)}</span>თქვენი წინა ადმინ ბმული აღარ მუშაობს.</div>`;
   } else if (req.query.created === '1') {
     banner = `<div class="ok">თამაში შეიქმნა! შეინახეთ ეს გვერდი — ეს ერთადერთი გზაა ბმულებთან დასაბრუნებლად.</div>`;
+  } else if (req.query.regenerated === '1') {
+    banner = `<div class="ok">ყველა ბმული წარმატებით განახლდა! ძველი ბმულები აღარ მუშაობს.</div>`;
   }
 
   const body = `
@@ -352,34 +345,37 @@ app.get('/admin/:adminToken', (req, res) => {
     <label style="font-size:13px;color:#c3b8d9">ადმინისტრატორის ბმული
       <span class="url">${esc(adminUrl)}</span>
     </label>
-    <button type="button" class="secondary copy-btn" data-url="${adminUrl}">
-      ადმინ ბმულის კოპირება
-    </button>
+    <button type="button" class="secondary copy-btn" data-url="${adminUrl}">ადმინ ბმულის კოპირება</button>
 
     <hr>
     <h2>მონაწილეები (${game.participants.length})</h2>
     ${rows}
 
     <hr>
+    <h2>მართვა</h2>
+    <p class="muted" style="margin-bottom:12px;font-size:14px">
+      თუ ტესტირების დროს ბმულები გააზიარეთ ან რაღაც შეიცვალა, შეგიძლიათ ყველა ბმული ერთდროულად განაახლოთ (თამაში ხელახლა გადათამაშდება).
+    </p>
+    <form method="post" action="/admin/${game.adminToken}/regenerate" onsubmit="return confirm('ნამდვილად გსურთ ყველა ბმულის განახლება? ძველი ბმულები გაუქმდება.')" style="margin-bottom:16px;">
+      <button type="submit" class="secondary">ყველა ბმულის განახლება (გადათამაშება)</button>
+    </form>
+
     <h2>ადმინისტრაციის გადაცემა</h2>
     <p class="muted" style="margin-bottom:12px;font-size:14px">
-      ქვემოთ ღილაკზე დაჭერით შეიქმნება ახალი ადმინ ბმული და თქვენი ახლანდელი ბმული გაუქმდება.
-      შემდეგ ახალი ბმული გაუგზავნეთ ახალ ადმინისტრატორს.
+      შეიქმნება ახალი ადმინ ბმული და თქვენი ახლანდელი ბმული გაუქმდება.
     </p>
-    <form method="post" action="/admin/${game.adminToken}/transfer"
-      onsubmit="return confirm('ნამდვილად გსურთ ადმინისტრაციის გადაცემა? თქვენი მიმდინარე ბმული გაუქმდება.')">
+    <form method="post" action="/admin/${game.adminToken}/transfer" onsubmit="return confirm('ნამდვილად გსურთ ადმინისტრაციის გადაცემა?')">
       <button type="submit" class="secondary">ადმინისტრაციის გადაცემა</button>
     </form>`;
 
+  // Re-use the same share modal code from before
   const extra = `
 <div id="share-modal" class="modal" hidden>
   <div class="modal-bg" data-close></div>
-  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+  <div class="modal-card" role="dialog" aria-modal="true">
     <button type="button" class="close-x" data-close aria-label="დახურვა">✕</button>
-    <h3 id="share-modal-title">გაზიარება</h3>
-    <p class="muted" style="font-size:14px;margin-bottom:16px">
-      გაუგზავნეთ პირადი ბმული <strong id="share-name"></strong>
-    </p>
+    <h3>გაზიარება</h3>
+    <p class="muted" style="font-size:14px;margin-bottom:16px">გაუგზავნეთ პირადი ბმული <strong id="share-name"></strong></p>
     <a id="share-wa" target="_blank" rel="noopener">📱 WhatsApp</a>
     <a id="share-tg" target="_blank" rel="noopener">✈️ Telegram</a>
     <a id="share-vb">💜 Viber</a>
@@ -391,124 +387,120 @@ app.get('/admin/:adminToken', (req, res) => {
 <script>
 (function(){
   function copyText(text){
-    if(navigator.clipboard && window.isSecureContext){
-      return navigator.clipboard.writeText(text);
-    }
+    if(navigator.clipboard && window.isSecureContext){ return navigator.clipboard.writeText(text); }
     return new Promise(function(resolve,reject){
-      var ta=document.createElement('textarea');
-      ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+      var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
       document.body.appendChild(ta);ta.focus();ta.select();
       try{document.execCommand('copy');resolve();}catch(e){reject(e);}
       document.body.removeChild(ta);
     });
   }
-
   document.querySelectorAll('.copy-btn').forEach(function(btn){
     btn.addEventListener('click',function(){
       copyText(btn.dataset.url).then(function(){
-        var orig=btn.textContent;
-        btn.textContent='დაკოპირდა ✓';
+        var orig=btn.textContent; btn.textContent='დაკოპირდა ✓';
         setTimeout(function(){btn.textContent=orig;},1600);
       }).catch(function(){alert('ბმულის კოპირება ვერ მოხერხდა');});
     });
   });
-
   var modal=document.getElementById('share-modal');
   var shareName=document.getElementById('share-name');
-  var shareWa=document.getElementById('share-wa');
-  var shareTg=document.getElementById('share-tg');
-  var shareVb=document.getElementById('share-vb');
-  var shareSms=document.getElementById('share-sms');
-  var shareEm=document.getElementById('share-em');
-  var shareCopy=document.getElementById('share-copy');
   var currentUrl='';
-
   function buildText(name,title){
     return 'გამარჯობა, '+name+'! 🎄 გილოცავთ ახალ წელს! 🎁\\n\\n'+
       'თქვენ ხართ „'+title+'" თამაშის მონაწილე. გთხოვთ გახსენით ეს პირადი ბმული, რომ გაიგოთ ვის უნდა აჩუქოთ საჩუქარი.\\n\\n'+
       '🤫 საიდუმლოდ შეინახეთ — ნუ გახსნით ბმულს სხვების თანდასწრებით!';
   }
-
   function openModal(name,url,title){
-    currentUrl=url;
-    shareName.textContent=name;
-    var text=buildText(name,title);
-    var full=text+'\\n\\n'+url;
-    shareWa.href='https://wa.me/?text='+encodeURIComponent(full);
-    shareTg.href='https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(text);
-    shareVb.href='viber://forward?text='+encodeURIComponent(full);
-    shareSms.href='sms:?&body='+encodeURIComponent(full);
-    shareEm.href='mailto:?subject='+encodeURIComponent(title+' — საიდუმლო სანტა')+'&body='+encodeURIComponent(full);
-    modal.hidden=false;
-    document.body.style.overflow='hidden';
+    currentUrl=url; shareName.textContent=name;
+    var text=buildText(name,title); var full=text+'\\n\\n'+url;
+    document.getElementById('share-wa').href='https://wa.me/?text='+encodeURIComponent(full);
+    document.getElementById('share-tg').href='https://t.me/share/url?url='+encodeURIComponent(url)+'&text='+encodeURIComponent(text);
+    document.getElementById('share-vb').href='viber://forward?text='+encodeURIComponent(full);
+    document.getElementById('share-sms').href='sms:?&body='+encodeURIComponent(full);
+    document.getElementById('share-em').href='mailto:?subject='+encodeURIComponent(title+' — საიდუმლო სანტა')+'&body='+encodeURIComponent(full);
+    modal.hidden=false; document.body.style.overflow='hidden';
   }
-
-  function closeModal(){
-    modal.hidden=true;
-    document.body.style.overflow='';
-  }
-
-  document.querySelectorAll('[data-close]').forEach(function(el){
-    el.addEventListener('click',closeModal);
-  });
-  document.addEventListener('keydown',function(e){
-    if(e.key==='Escape' && !modal.hidden) closeModal();
-  });
-
-  modal.querySelectorAll('a[href]').forEach(function(a){
-    a.addEventListener('click',function(){setTimeout(closeModal,150);});
-  });
-
-  shareCopy.addEventListener('click',function(){
-    copyText(currentUrl).then(function(){
-      var orig=shareCopy.textContent;
-      shareCopy.textContent='დაკოპირდა ✓';
-      setTimeout(function(){shareCopy.textContent=orig;},1600);
-    }).catch(function(){});
-  });
-
+  function closeModal(){ modal.hidden=true; document.body.style.overflow=''; }
+  document.querySelectorAll('[data-close]').forEach(function(el){ el.addEventListener('click',closeModal); });
   document.querySelectorAll('.share-btn').forEach(function(btn){
     btn.addEventListener('click',function(){
       var name=btn.dataset.name, url=btn.dataset.url, title=btn.dataset.title;
       var text=buildText(name,title);
       if(navigator.share){
         navigator.share({title:title,text:text+'\\n\\n'+url}).catch(function(err){
-          if(err && err.name==='AbortError') return;
-          openModal(name,url,title);
-        });
-        return;
+          if(err && err.name==='AbortError') return; openModal(name,url,title);
+        }); return;
       }
       openModal(name,url,title);
     });
   });
+  document.getElementById('share-copy').addEventListener('click',function(){
+    copyText(currentUrl).then(function(){
+      var orig=this.textContent; this.textContent='დაკოპირდა ✓';
+      setTimeout(()=>{this.textContent=orig;},1600);
+    });
+  });
 })();
 </script>`;
-
   res.send(layout('ბმულები — ' + game.title, body, extra));
 });
 
-app.post('/admin/:adminToken/transfer', async (req, res) => {
+// Delete Participant & Re-shuffle
+app.post('/admin/:adminToken/delete/:participantId', async (req, res) => {
   const game = findGameByAdminToken(req.params.adminToken);
-  if (!game) return res.status(404).send(layout('ვერ მოიძებნა', `
-    <div class="err">არასწორი ადმინისტრატორის ბმული.</div>`));
+  if (!game) return res.status(404).send('Not found');
 
-  const oldToken = game.adminToken;
-  game.adminToken = newToken();
+  const pid = req.params.participantId;
+  game.participants = game.participants.filter(p => p.id !== pid);
+  delete game.assignments[pid];
 
-  const ok = await persist();
-  if (!ok) {
-    game.adminToken = oldToken;
-    return res.status(500).send(layout('შეცდომა', `
-      <div class="err">გადაცემა ვერ მოხერხდა. სცადეთ თავიდან.</div>`));
+  if (game.participants.length < 2) {
+    return res.status(400).send(layout('შეცდომა', `
+      <div class="err">თამაშში უნდა დარჩეს მინიმუმ 2 მონაწილე. წაშლა ვერ მოხერხდა.</div>
+      <p><a href="/admin/${game.adminToken}">← უკან</a></p>`));
   }
 
+  // Re-shuffle the remaining participants
+  const pairs = makeAssignments(game.participants);
+  game.assignments = Object.fromEntries(pairs.map(p => [p.giver.id, p.recipient.id]));
+
+  await persist();
+  res.redirect(`/admin/${game.adminToken}`);
+});
+
+// Regenerate ALL Links (Re-shuffle & new tokens)
+app.post('/admin/:adminToken/regenerate', async (req, res) => {
+  const game = findGameByAdminToken(req.params.adminToken);
+  if (!game) return res.status(404).send('Not found');
+
+  game.participants.forEach(p => {
+    p.token = newToken();
+    p.viewedAt = null;
+  });
+
+  const pairs = makeAssignments(game.participants);
+  game.assignments = Object.fromEntries(pairs.map(p => [p.giver.id, p.recipient.id]));
+
+  await persist();
+  res.redirect(`/admin/${game.adminToken}?regenerated=1`);
+});
+
+// Transfer Admin
+app.post('/admin/:adminToken/transfer', async (req, res) => {
+  const game = findGameByAdminToken(req.params.adminToken);
+  if (!game) return res.status(404).send('Not found');
+
+  game.adminToken = newToken();
+  await persist();
   res.redirect(`/admin/${game.adminToken}?transferred=1`);
 });
 
+// Participant Reveal
 app.get('/r/:token', async (req, res) => {
   const found = findParticipantByToken(req.params.token);
   if (!found) return res.status(404).send(layout('ვერ მოიძებნა', `
-    <div class="err">ეს ბმული არ არის ვალიდური.</div>
+    <div class="err">ეს ბმული არ არის ვალიდური (შესაძლოა განახლდა).</div>
     <p><a href="/">← მთავარი</a></p>`));
 
   const { game, participant } = found;
@@ -522,17 +514,13 @@ app.get('/r/:token', async (req, res) => {
         გამარჯობა, <strong>${esc(participant.name)}</strong>!<br>მზად ხართ გაიგოთ ვის უნდა აჩუქოთ საჩუქარი?
       </p>
       <p class="center">
-        <a href="/r/${participant.token}?reveal=1"
-          style="font-size:17px;font-weight:700;display:inline-block;padding:16px 24px;
-          background:linear-gradient(180deg,#e23b3b,#b81f2f);color:#fff;border-radius:14px;
-          box-shadow:0 8px 20px rgba(226,59,59,.4);text-decoration:none;width:100%">
+        <a href="/r/${participant.token}?reveal=1" style="font-size:17px;font-weight:700;display:inline-block;padding:16px 24px;background:linear-gradient(180deg,#e23b3b,#b81f2f);color:#fff;border-radius:14px;box-shadow:0 8px 20px rgba(226,59,59,.4);text-decoration:none;width:100%">
           ჩემი დავალების ნახვა →
         </a>
       </p>`));
   }
 
-  const alreadyViewed = !!participant.viewedAt;
-  if (!alreadyViewed) {
+  if (!participant.viewedAt) {
     participant.viewedAt = new Date().toISOString();
     await persist();
   }
@@ -544,7 +532,6 @@ app.get('/r/:token', async (req, res) => {
       <strong>${esc(participant.name)}</strong>, თქვენ საჩუქარს აძლევთ:
     </p>
     <div class="big">${esc(recipient.name)}</div>
-    ${alreadyViewed ? '<p class="tag center">თქვენ უკვე გახსენით ეს ბმული ადრე.</p>' : ''}
     <div style="background:rgba(255,255,255,0.05);padding:16px;border-radius:12px;margin-top:24px">
       <p class="muted center" style="margin:0;font-size:14px">
         🤫 საიდუმლოდ შეინახეთ — და ნუ გახსნით ამ ბმულს მის თანდასწრებით.
