@@ -339,18 +339,6 @@ ${extra}
     });
   }
   renderList('saved-exchanges','ss_exchanges','ჯერ გათამაშება არ შეგიქმნია.','საიდუმლო სანტა');
-  var giftForm=document.getElementById('gift-link-form');
-  if(giftForm) giftForm.addEventListener('submit',function(e){
-    e.preventDefault();
-    var raw=(document.getElementById('gift-link-input').value||'').trim();
-    var token='';
-    try{
-      if(raw.indexOf('http')===0){var parsed=new URL(raw);var match=parsed.pathname.match(/^\\/r\\/([A-Za-z0-9_-]+)\\/?$/);if(match)token=match[1];}
-      else if(/^[A-Za-z0-9_-]{12,}$/.test(raw)) token=raw;
-    }catch(e){}
-    if(!token){alert('ჩასვი შენთვის გამოგზავნილი პირადი ბმული.');return;}
-    window.location.href='/r/'+token;
-  });
   var profile=document.getElementById('profile-name');
   if(profile) profile.value=localStorage.getItem('ss_profile_name')||'';
   var saveProfile=document.getElementById('save-profile');
@@ -424,15 +412,6 @@ app.get('/', (req, res) => {
           <textarea name="names" required placeholder="ანა\nდავითი\nსოფო"></textarea>
         </label>
         <button type="submit">გათამაშების შექმნა</button>
-      </form>
-    </section>
-    <section class="app-card">
-      <h2>უკვე გაქვს პირადი ბმული?</h2>
-      <form id="gift-link-form">
-        <label>ჩასვი მიღებული პირადი ბმული
-          <input id="gift-link-input" required placeholder="ჩასვი ბმული აქ">
-        </label>
-        <button type="submit" class="secondary">ჩემი საჩუქრის ნახვა</button>
       </form>
     </section>
     <p class="muted center" style="font-size:13px">რეგისტრაცია საჭირო არ არის.</p>`));
