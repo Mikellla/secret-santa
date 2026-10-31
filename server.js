@@ -289,8 +289,7 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 .app-link-row a{display:block;min-width:0;overflow-wrap:anywhere}
 .install-btn{background:linear-gradient(180deg,#e7b84d,#c58a22);color:#111827;box-shadow:none;margin-top:10px}
 .profile-input{margin:0 0 12px}
-@media (max-width:480px){
-  body{padding:0 0 88px;place-items:end center}
+</style></head><body>
 
 <!-- THIS LOADS YOUR LOCAL IMAGE -->
 <img class="bg-image" src="/bg.jpg" alt="Winter Background">
