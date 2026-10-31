@@ -44,9 +44,9 @@ app.get('/manifest.webmanifest', (req, res) => {
   res.set('Cache-Control', 'no-cache');
   res.type('application/manifest+json').send(JSON.stringify({
     id: '/',
-    name: 'Secret Santa',
-    short_name: 'Santa',
-    description: 'Create a gift exchange and reveal your Secret Santa.',
+    name: 'საიდუმლო სანტა',
+    short_name: 'სანტა',
+    description: 'შექმენი გათამაშება და გაიგე, ვის უნდა აჩუქო.',
     start_url: '/?tab=home',
     scope: '/',
     display: 'standalone',
@@ -299,10 +299,10 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 <main>${body}</main>
 ${extra}
 <nav class="bottom-nav" aria-label="Main navigation">
-  <a href="/?tab=home" data-tab="home"><span>⌂</span>Home</a>
-  <a href="/?tab=exchanges" data-tab="exchanges"><span>▦</span>Exchanges</a>
-  <a href="/?tab=gifts" data-tab="gifts"><span>🎁</span>My Gifts</a>
-  <a href="/?tab=profile" data-tab="profile"><span>♙</span>Profile</a>
+  <a href="/?tab=home" data-tab="home"><span>⌂</span>მთავარი</a>
+  <a href="/?tab=exchanges" data-tab="exchanges"><span>▦</span>გათამაშებები</a>
+  <a href="/?tab=gifts" data-tab="gifts"><span>🎁</span>ჩემი საჩუქარი</a>
+  
 </nav>
 <script>
 (function(){
@@ -314,10 +314,10 @@ ${extra}
     localStorage.setItem(key,JSON.stringify(items.slice(0,30)));
   }
   if(path.indexOf('/admin/')===0){
-    save('ss_exchanges',{title:(document.querySelector('main h1')||{}).textContent||'Secret Santa',url:path});
+    save('ss_exchanges',{title:(document.querySelector('main h1')||{}).textContent||'საიდუმლო სანტა',url:path});
   }
   if(path.indexOf('/r/')===0){
-    save('ss_gifts',{title:(document.querySelector('main h1')||{}).textContent||'Secret Santa gift',url:path});
+    save('ss_gifts',{title:(document.querySelector('main h1')||{}).textContent||'საიდუმლო სანტა gift',url:path});
   }
   var tab=new URLSearchParams(window.location.search).get('tab')||'home';
   document.querySelectorAll('.bottom-nav a').forEach(function(a){
@@ -336,8 +336,8 @@ ${extra}
       row.appendChild(name);row.appendChild(link);box.appendChild(row);
     });
   }
-  renderList('saved-exchanges','ss_exchanges','No exchanges saved on this device yet. Open an admin link and it will appear here.','Secret Santa');
-  renderList('saved-gifts','ss_gifts','No gift links saved yet. Open your personal gift link and it will appear here.','My gift');
+  renderList('saved-exchanges','ss_exchanges','ჯერ გათამაშება არ შეგიქმნია.','საიდუმლო სანტა');
+  renderList('saved-gifts','ss_gifts','პირადი ბმული ჯერ არ გაგიხსნია.','My gift');
   var giftForm=document.getElementById('gift-link-form');
   if(giftForm) giftForm.addEventListener('submit',function(e){
     e.preventDefault();
@@ -347,7 +347,7 @@ ${extra}
       if(raw.indexOf('http')===0){var parsed=new URL(raw);var match=parsed.pathname.match(/^\\/r\\/([A-Za-z0-9_-]+)\\/?$/);if(match)token=match[1];}
       else if(/^[A-Za-z0-9_-]{12,}$/.test(raw)) token=raw;
     }catch(e){}
-    if(!token){alert('Please paste the personal gift link you received.');return;}
+    if(!token){alert('ჩასვი შენთვის გამოგზავნილი პირადი ბმული.');return;}
     window.location.href='/r/'+token;
   });
   var profile=document.getElementById('profile-name');
@@ -355,7 +355,7 @@ ${extra}
   var saveProfile=document.getElementById('save-profile');
   if(saveProfile) saveProfile.addEventListener('click',function(){
     if(profile) localStorage.setItem('ss_profile_name',profile.value.trim());
-    saveProfile.textContent='Saved ✓';
+    saveProfile.textContent='შენახულია ✓';
   });
   var clear=document.getElementById('clear-local-data');
   if(clear) clear.addEventListener('click',function(){
@@ -374,7 +374,7 @@ ${extra}
     install.hidden=!ios;
     install.addEventListener('click',async function(){
       if(deferred){deferred.prompt();await deferred.userChoice;deferred=null;}
-      else if(ios){alert('To install: tap Share in Safari, then choose “Add to Home Screen”.');}
+      else if(ios){alert('Safari-ში დააჭირე გაზიარების ღილაკს და აირჩიე „მთავარ ეკრანზე დამატება“.');}
     });
   }
   if('serviceWorker' in navigator){
@@ -399,74 +399,51 @@ function findParticipantByToken(token) {
 /* ---------------- routes ---------------- */
 
 app.get('/', (req, res) => {
-  const tab = ['home', 'exchanges', 'gifts', 'profile'].includes(req.query.tab) ? req.query.tab : 'home';
+  const tab = ['home', 'exchanges', 'gifts'].includes(req.query.tab) ? req.query.tab : 'home';
   if (tab === 'exchanges') {
-    return res.send(layout('My Exchanges', `
-      <div class="banner">🎄 SECRET SANTA</div>
-      <h1 class="app-heading">My Exchanges</h1>
-      <p class="app-intro">Your organizer links saved on this device.</p>
-      <section class="app-card"><h2>Saved exchanges</h2><div id="saved-exchanges">Loading…</div></section>
-      <p class="muted center" style="font-size:13px">Exchange links are saved only in this browser. Keep your admin link somewhere safe too.</p>
-      <a class="app-cta" href="/">Create an exchange</a>`));
+    return res.send(layout('ჩემი გათამაშებები', `
+      <div class="banner">🎄 საიდუმლო სანტა</div>
+      <h1 class="app-heading">ჩემი გათამაშებები</h1>
+      <p class="app-intro">შენ მიერ შექმნილი გათამაშებები.</p>
+      <section class="app-card"><h2>შენი გათამაშებები</h2><div id="saved-exchanges">იტვირთება…</div></section>
+      <p class="muted center" style="font-size:13px">ბმულები ინახება ამ მოწყობილობაზე.</p>
+      <a class="app-cta" href="/">ახალი გათამაშების შექმნა</a>`));
   }
   if (tab === 'gifts') {
-    return res.send(layout('My Gifts', `
-      <div class="banner">🎄 YOUR SECRET IS SAFE</div>
-      <h1 class="app-heading">My Gifts</h1>
-      <p class="app-intro">Personal gift links you have opened on this device.</p>
-      <section class="app-card"><h2>Your gift links</h2><div id="saved-gifts">Loading…</div></section>
-      <p class="muted center" style="font-size:13px">Only open your own personal link. Anyone holding that link can see the assignment.</p>
-      <a class="app-cta" href="/">Back to Home</a>`));
+    return res.send(layout('ჩემი საჩუქარი', `
+      <div class="banner">🎄 შენი საიდუმლო დაცულია</div>
+      <h1 class="app-heading">ჩემი საჩუქარი</h1>
+      <p class="app-intro">გათამაშებები, რომლებშიც მონაწილეობ.</p>
+      <section class="app-card"><h2>შენი ბმულები</h2><div id="saved-gifts">იტვირთება…</div></section>
+      <p class="muted center" style="font-size:13px">პირადი ბმული მხოლოდ შენთვისაა — არავის გაუზიარო.</p>
+      <a class="app-cta" href="/">მთავარზე დაბრუნება</a>`));
   }
-  if (tab === 'profile') {
-    return res.send(layout('Profile', `
-      <div class="banner">🎁 SECRET SANTA</div>
-      <h1 class="app-heading">Your Profile</h1>
-      <p class="app-intro">A simple profile for this device. No account required.</p>
-      <section class="app-card">
-        <label>Your name
-          <input id="profile-name" class="profile-input" maxlength="60" placeholder="Enter your name">
-        </label>
-        <button id="save-profile" type="button">Save name</button>
-      </section>
-      <section class="app-card">
-        <h2>Install Secret Santa</h2>
-        <p>Keep the app on your phone's home screen for quick access.</p>
-        <button id="install-app" type="button" class="install-btn" hidden>Install app</button>
-        <p class="muted" style="font-size:13px;margin-top:10px">On iPhone: open this site in Safari, tap Share, then “Add to Home Screen”.</p>
-      </section>
-      <section class="app-card">
-        <h2>Device data</h2>
-        <p>Your saved exchange and gift links are stored locally in this browser.</p>
-        <button id="clear-local-data" type="button" class="secondary">Clear saved links</button>
-      </section>`));
-  }
-  res.send(layout('Secret Santa', `
-    <div class="banner">🎄 SHARE THE JOY · SPREAD THE CHEER 🎁</div>
-    <h1 class="app-heading">Secret Santa</h1>
-    <p class="app-intro">Create a gift exchange, share each person's private link, and let the surprise begin.</p>
+  res.send(layout('საიდუმლო სანტა', `
+    <div class="banner">🎄 გაუზიარე სიხარული მეგობრებს 🎁</div>
+    <h1 class="app-heading">საიდუმლო სანტა</h1>
+    <p class="app-intro">შექმენი გათამაშება და გაუგზავნე მონაწილეებს პირადი ბმულები.</p>
     <section class="app-card">
-      <h2>Create an exchange</h2>
+      <h2>ახალი გათამაშების შექმნა</h2>
       <form method="post" action="/create">
-        <label>Exchange name
-          <input name="title" maxlength="80" placeholder="Family Christmas 2026">
+        <label>გათამაშების სახელი
+          <input name="title" maxlength="80" placeholder="მაგ. მეგობრების ახალი წელი">
         </label>
-        <label>Participants — one name per line
-          <textarea name="names" required placeholder="Anna\nDavid\nSofia"></textarea>
+        <label>მონაწილეები — თითო სახელი ცალკე ხაზზე
+          <textarea name="names" required placeholder="ანა\nდავითი\nსოფო"></textarea>
         </label>
-        <button type="submit">Create Secret Santa</button>
+        <button type="submit">Create საიდუმლო სანტა</button>
       </form>
     </section>
     <section class="app-card">
-      <h2>Already have your personal gift link?</h2>
+      <h2>უკვე გაქვს პირადი ბმული?</h2>
       <form id="gift-link-form">
-        <label>Paste your personal link or token
-          <input id="gift-link-input" required placeholder="Paste the link you received">
+        <label>ჩასვი მიღებული პირადი ბმული
+          <input id="gift-link-input" required placeholder="ჩასვი ბმული აქ">
         </label>
-        <button type="submit" class="secondary">Open my gift</button>
+        <button type="submit" class="secondary">ჩემი საჩუქრის ნახვა</button>
       </form>
     </section>
-    <p class="muted center" style="font-size:13px">No account needed. Your organizer and personal links are saved on this device when you open them.</p>`));
+    <p class="muted center" style="font-size:13px">რეგისტრაცია საჭირო არ არის.</p>`));
 });
 
 app.post('/create', async (req, res) => {
