@@ -135,10 +135,11 @@ function layout(title, body, extra = '') {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
+html{background:#1a0f2e}
 html,body{margin:0;padding:0;min-height:100vh;
   font:16px/1.55 "Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:#f0eaff;
-  background-color:#1a0f2e; /* Festive fallback color */
+  background-color:transparent;
   overflow-x:hidden;
   -webkit-tap-highlight-color: transparent;
 }
@@ -146,27 +147,29 @@ html,body{margin:0;padding:0;min-height:100vh;
 /* 1. The Background Image pinned to the back (Loads from YOUR local file) */
 .bg-image {
   position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  z-index: -3;
+  z-index: 0;
   pointer-events: none;
 }
 
-/* 2. Dark overlay to make text readable */
+/* Overlay sits above the image and below all page content */
 .bg-overlay {
   position: fixed;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(10,15,30,0.3) 0%, rgba(10,15,30,0.8) 50%, rgba(10,15,30,0.95) 100%);
-  z-index: -2;
+  background: linear-gradient(to bottom, rgba(10,15,30,0.18) 0%, rgba(10,15,30,0.48) 55%, rgba(10,15,30,0.72) 100%);
+  z-index: 0;
   pointer-events: none;
 }
 
-/* 3. Animated Snow */
+/* Animated snow */
 .snow-layer {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: -1;
+  z-index: 0;
 }
 .snow-layer::after {
   content: '';
@@ -233,11 +236,16 @@ button.danger:hover{background:rgba(226,59,59,0.25)}
 a{color:#8fbcff;word-break:break-all;text-decoration:none}
 a:hover{text-decoration:underline}
 
-.row{display:flex;gap:12px;align-items:center;justify-content:space-between;
-  padding:14px;border:1px solid rgba(255,255,255,0.1);border-radius:14px;margin-bottom:12px;
-  background:rgba(0,0,0,0.3);flex-wrap:wrap}
-.row .info{flex:1;min-width:0}
-.row .actions{display:flex;gap:8px;flex-wrap:wrap}
+.row{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;
+  padding:14px;border:1px solid rgba(255,255,255,0.12);border-radius:16px;margin-bottom:12px;
+  background:rgba(5,12,28,0.72)}
+.row .info{min-width:0}
+.row .participant-link{display:inline-flex;align-items:center;margin-top:9px;padding:8px 11px;
+  border-radius:9px;background:rgba(143,188,255,0.12);font-size:13px;word-break:normal}
+.row .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+.row .actions button{width:100%;padding:11px 8px;font-size:13px}
+.row .actions form{grid-column:1/-1}
+.row .actions form button{background:rgba(226,59,59,0.12);box-shadow:none}
 .name{font-weight:700;margin-bottom:4px;font-size:16px}
 .tag{font-size:12px;color:#9ca3af;margin-top:4px}
 .big{font-size:36px;font-weight:800;color:#ffd166;margin:24px 0;text-align:center;
@@ -272,8 +280,8 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
   main{border-radius:24px 24px 0 0;padding:28px 20px;min-height:90vh;border-bottom:none}
   h1{font-size:22px}
   .big{font-size:32px}
-  .row .actions{width:100%;margin-top:8px}
-  .row .actions button{flex:1}
+  .row .actions{width:100%}
+  .row .actions button{flex:initial}
 }
 .bottom-nav{position:fixed;z-index:80;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,520px);display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:9px 8px calc(10px + env(safe-area-inset-bottom));background:rgba(5,13,29,.96);border-top:1px solid rgba(255,209,102,.25);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
 .bottom-nav a{display:flex;flex-direction:column;align-items:center;gap:2px;color:#aebbd0;font-size:11px;line-height:1.3;word-break:normal;text-decoration:none;padding:4px 2px}
@@ -506,14 +514,14 @@ app.get('/admin/:adminToken', (req, res) => {
     <div class="row">
       <div class="info">
         <div class="name">${esc(p.name)}</div>
-        <a href="${url}">${url}</a>
         <div class="tag">${p.viewedAt ? '👀 ნანახია' : 'ჯერ არ გახსნილა'}</div>
+        <a class="participant-link" href="${url}" target="_blank" rel="noopener">პირადი ბმულის გახსნა ↗</a>
       </div>
       <div class="actions">
-        <button type="button" class="secondary copy-btn" data-url="${url}">კოპირება</button>
+        <button type="button" class="secondary copy-btn" data-url="${url}">ბმულის კოპირება</button>
         <button type="button" class="share-btn" data-name="${esc(p.name)}" data-url="${url}" data-title="${esc(game.title)}">გაზიარება</button>
         <form method="POST" action="/admin/${game.adminToken}/delete/${p.id}" style="margin:0;" onsubmit="return confirm('ნამდვილად გსურთ ${esc(p.name)}-ის წაშლა? თამაში ავტომატურად გადათამაშდება.')">
-          <button type="submit" class="danger">წაშლა</button>
+          <button type="submit" class="danger">მონაწილის წაშლა</button>
         </form>
       </div>
     </div>`;
