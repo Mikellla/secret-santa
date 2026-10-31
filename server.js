@@ -87,6 +87,15 @@ app.use(async (req, res, next) => {
 
 /* ---------------- helpers ---------------- */
 const newToken = () => crypto.randomBytes(16).toString('base64url');
+
+function organizerCodeMatches(candidate) {
+  const configured = process.env.ORGANIZER_ACCESS_CODE;
+  if (typeof configured !== 'string' || configured.length < 24) return false;
+  if (typeof candidate !== 'string') return false;
+  const expected = Buffer.from(configured, 'utf8');
+  const supplied = Buffer.from(candidate, 'utf8');
+  return expected.length === supplied.length && crypto.timingSafeEqual(expected, supplied);
+}
 const esc = (s) => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -406,10 +415,13 @@ app.get('/', (req, res) => {
   res.send(layout('საიდუმლო სანტა', `
     <div class="banner">🎄 გაუზიარე სიხარული მეგობრებს 🎁</div>
     <h1 class="app-heading">საიდუმლო სანტა</h1>
-    <p class="app-intro">შექმენი გათამაშება და გაუგზავნე მონაწილეებს პირადი ბმულები.</p>
+    <p class="app-intro">ორგანიზატორი ქმნის გათამაშებას და მონაწილეებს უგზავნის პირად ბმულებს.</p>
     <section class="app-card">
-      <h2>ახალი გათამაშების შექმნა</h2>
+      <h2>ორგანიზატორის წვდომა</h2>
       <form method="post" action="/create">
+        <label>ორგანიზატორის კოდი
+          <input type="password" name="organizerCode" maxlength="128" required autocomplete="off" placeholder="შეიყვანეთ ორგანიზატორის კოდი">
+        </label>
         <label>გათამაშების სახელი
           <input name="title" maxlength="80" placeholder="მაგ. მეგობრების ახალი წელი">
         </label>
@@ -419,10 +431,21 @@ app.get('/', (req, res) => {
         <button type="submit">გათამაშების შექმნა</button>
       </form>
     </section>
-    <p class="muted center" style="font-size:13px">რეგისტრაცია საჭირო არ არის.</p>`));
+    <p class="muted center" style="font-size:13px">მონაწილეებს კოდი არ სჭირდებათ — მათ მხოლოდ პირადი ბმული უნდა გამოიყენონ.</p>
+    `));
 });
 
 app.post('/create', async (req, res) => {
+  if (!process.env.ORGANIZER_ACCESS_CODE || process.env.ORGANIZER_ACCESS_CODE.length < 24) {
+    return res.status(503).send(layout('ორგანიზატორის წვდომა მიუწვდომელია', `
+      <div class="err">ორგანიზატორის კოდი ჯერ არ არის დაყენებული. გთხოვთ, დაუკავშირდეთ აპლიკაციის ადმინისტრატორს.</div>
+      <p><a href="/">← მთავარი</a></p>`));
+  }
+  if (!organizerCodeMatches(req.body.organizerCode)) {
+    return res.status(403).send(layout('წვდომა შეზღუდულია', `
+      <div class="err">ორგანიზატორის კოდი არასწორია. გათამაშების შექმნა მხოლოდ ორგანიზატორს შეუძლია.</div>
+      <p><a href="/">← სცადეთ თავიდან</a></p>`));
+  }
   const title = (req.body.title || '').trim().slice(0, 80) || 'საიდუმლო სანტა';
   const raw = String(req.body.names || '').split('\n').map(s => s.trim()).filter(Boolean);
 
