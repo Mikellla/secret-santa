@@ -317,7 +317,7 @@ ${extra}
     save('ss_exchanges',{title:(document.querySelector('main h1')||{}).textContent||'საიდუმლო სანტა',url:path});
   }
   if(path.indexOf('/r/')===0){
-    save('ss_gifts',{title:(document.querySelector('main h1')||{}).textContent||'საიდუმლო სანტა gift',url:path});
+    save('ss_gifts',{title:(document.querySelector('main h1')||{}).textContent||'საიდუმლო სანტა',url:path});
   }
   var tab=new URLSearchParams(window.location.search).get('tab')||'home';
   document.querySelectorAll('.bottom-nav a').forEach(function(a){
@@ -332,12 +332,12 @@ ${extra}
     items.forEach(function(item){
       var row=document.createElement('div');row.className='app-link-row';
       var name=document.createElement('strong');name.textContent=item.title||label;
-      var link=document.createElement('a');link.href=item.url;link.textContent='Open →';
+      var link=document.createElement('a');link.href=item.url;link.textContent='გახსნა →';
       row.appendChild(name);row.appendChild(link);box.appendChild(row);
     });
   }
   renderList('saved-exchanges','ss_exchanges','ჯერ გათამაშება არ შეგიქმნია.','საიდუმლო სანტა');
-  renderList('saved-gifts','ss_gifts','პირადი ბმული ჯერ არ გაგიხსნია.','My gift');
+  renderList('saved-gifts','ss_gifts','პირადი ბმული ჯერ არ გაგიხსნია.','ჩემი საჩუქარი');
   var giftForm=document.getElementById('gift-link-form');
   if(giftForm) giftForm.addEventListener('submit',function(e){
     e.preventDefault();
@@ -361,8 +361,8 @@ ${extra}
   if(clear) clear.addEventListener('click',function(){
     localStorage.removeItem('ss_exchanges');localStorage.removeItem('ss_gifts');
     var a=document.getElementById('saved-exchanges');var b=document.getElementById('saved-gifts');
-    if(a)a.textContent='No exchanges saved on this device yet.';
-    if(b)b.textContent='No gift links saved yet.';
+    if(a)a.textContent='ჯერ გათამაშება არ შეგიქმნია.';
+    if(b)b.textContent='პირადი ბმული ჯერ არ გაგიხსნია.';
   });
   var install=document.getElementById('install-app');
   var deferred=null;
