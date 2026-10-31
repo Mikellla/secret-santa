@@ -1,4 +1,4 @@
-// server.js — Surprise Santa (Robust Background + Delete Links + Regenerate)
+// server.js — Surprise Santa (Stable Layout + Admin Tools)
 import express from 'express';
 import crypto from 'node:crypto';
 import { Redis } from '@upstash/redis';
@@ -12,7 +12,6 @@ const redis = Redis.fromEnv();
 app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-// Disable caching so you always see the latest UI
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   next();
@@ -80,7 +79,6 @@ function makeAssignments(people) {
 }
 
 function layout(title, body, extra = '') {
-  // Using ?v=5 to bust CSS cache
   return `<!doctype html><html lang="ka"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0a1020">
@@ -98,39 +96,35 @@ html,body{margin:0;padding:0;min-height:100vh;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Fixed Background Layers */
-.bg-image{position:fixed;inset:0;
-  background-image:url('https://images.unsplash.com/photo-1543886577-520cc763ad63?q=80&w=2000&auto=format&fit=crop&v=5');
-  background-size:cover;background-position:center bottom;z-index:-3}
-.bg-overlay{position:fixed;inset:0;
-  background:linear-gradient(to bottom, rgba(10,15,30,0.4) 0%, rgba(10,15,30,0.85) 50%, rgba(10,15,30,0.98) 100%);
+/* 1. Reliable Background Image */
+body{
+  background-image:url('https://images.unsplash.com/photo-1543886577-520cc763ad63?q=80&w=2000&auto=format&fit=crop&v=6');
+  background-size:cover;
+  background-position:center bottom;
+  background-attachment:fixed;
+}
+
+/* 2. Dark Overlay for Readability */
+body::before{content:'';position:fixed;inset:0;
+  background:linear-gradient(to bottom, rgba(10,15,30,0.3) 0%, rgba(10,15,30,0.8) 50%, rgba(10,15,30,0.95) 100%);
   z-index:-2;pointer-events:none}
 
-/* Animated Snow */
-.snow-layer{position:fixed;inset:0;pointer-events:none;z-index:-1}
-.snow-layer::after{content:'';position:absolute;top:-2000px;left:0;right:0;bottom:0;
+/* 3. Animated Snow (Using body::after to avoid layout bugs) */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
   background-image:
-    radial-gradient(3px 3px at 20px 30px, #fff, transparent),
-    radial-gradient(2px 2px at 80px 90px, rgba(255,255,255,.8), transparent),
-    radial-gradient(4px 4px at 140px 40px, #fff, transparent),
+    radial-gradient(2px 2px at 20px 30px, #fff, transparent),
+    radial-gradient(3px 3px at 80px 90px, rgba(255,255,255,.8), transparent),
+    radial-gradient(1.5px 1.5px at 140px 40px, #fff, transparent),
     radial-gradient(2px 2px at 200px 150px, rgba(255,255,255,.7), transparent),
     radial-gradient(3px 3px at 260px 60px, #fff, transparent);
   background-size:300px 300px;background-repeat:repeat;
   animation:snow-fall 12s linear infinite}
-.snow-layer.fast::after{
-  background-image:
-    radial-gradient(1.5px 1.5px at 10px 20px, rgba(255,255,255,.6), transparent),
-    radial-gradient(2px 2px at 50px 80px, #fff, transparent),
-    radial-gradient(1px 1px at 100px 50px, rgba(255,255,255,.8), transparent),
-    radial-gradient(2px 2px at 150px 120px, rgba(255,255,255,.7), transparent);
-  background-size:200px 200px;
-  animation-duration:8s;opacity:.6}
-@keyframes snow-fall{from{transform:translateY(0)}to{transform:translateY(2000px)}}
+@keyframes snow-fall{from{background-position:0 0}to{background-position:0 2000px}}
 
 /* App Layout */
 body{display:grid;place-items:center;padding:20px}
 main{position:relative;z-index:1;width:100%;max-width:480px;
-  background:rgba(20,25,45,0.75);
+  background:rgba(20,25,45,0.8);
   border:1px solid rgba(255,255,255,0.15);
   border-radius:24px;padding:24px;
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
@@ -216,10 +210,6 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
   .row .actions button{flex:1}
 }
 </style></head><body>
-<div class="bg-image"></div>
-<div class="bg-overlay"></div>
-<div class="snow-layer"></div>
-<div class="snow-layer fast"></div>
 <main>${body}</main>
 ${extra}
 </body></html>`;
@@ -368,7 +358,6 @@ app.get('/admin/:adminToken', (req, res) => {
       <button type="submit" class="secondary">ადმინისტრაციის გადაცემა</button>
     </form>`;
 
-  // Re-use the same share modal code from before
   const extra = `
 <div id="share-modal" class="modal" hidden>
   <div class="modal-bg" data-close></div>
@@ -395,14 +384,17 @@ app.get('/admin/:adminToken', (req, res) => {
       document.body.removeChild(ta);
     });
   }
+  
   document.querySelectorAll('.copy-btn').forEach(function(btn){
     btn.addEventListener('click',function(){
-      copyText(btn.dataset.url).then(function(){
-        var orig=btn.textContent; btn.textContent='დაკოპირდა ✓';
-        setTimeout(function(){btn.textContent=orig;},1600);
+      var btnEl = this;
+      copyText(btnEl.dataset.url).then(function(){
+        var orig=btnEl.textContent; btnEl.textContent='დაკოპირდა ✓';
+        setTimeout(function(){btnEl.textContent=orig;},1600);
       }).catch(function(){alert('ბმულის კოპირება ვერ მოხერხდა');});
     });
   });
+
   var modal=document.getElementById('share-modal');
   var shareName=document.getElementById('share-name');
   var currentUrl='';
@@ -435,18 +427,24 @@ app.get('/admin/:adminToken', (req, res) => {
       openModal(name,url,title);
     });
   });
-  document.getElementById('share-copy').addEventListener('click',function(){
-    copyText(currentUrl).then(function(){
-      var orig=this.textContent; this.textContent='დაკოპირდა ✓';
-      setTimeout(()=>{this.textContent=orig;},1600);
+  
+  var copyBtn = document.getElementById('share-copy');
+  if(copyBtn) {
+    copyBtn.addEventListener('click',function(){
+      var btnEl = this;
+      copyText(currentUrl).then(function(){
+        var orig=btnEl.textContent; btnEl.textContent='დაკოპირდა ✓';
+        setTimeout(function(){btnEl.textContent=orig;},1600);
+      });
     });
-  });
+  }
 })();
 </script>`;
+
   res.send(layout('ბმულები — ' + game.title, body, extra));
 });
 
-// Delete Participant & Re-shuffle
+// Delete Participant
 app.post('/admin/:adminToken/delete/:participantId', async (req, res) => {
   const game = findGameByAdminToken(req.params.adminToken);
   if (!game) return res.status(404).send('Not found');
@@ -461,7 +459,6 @@ app.post('/admin/:adminToken/delete/:participantId', async (req, res) => {
       <p><a href="/admin/${game.adminToken}">← უკან</a></p>`));
   }
 
-  // Re-shuffle the remaining participants
   const pairs = makeAssignments(game.participants);
   game.assignments = Object.fromEntries(pairs.map(p => [p.giver.id, p.recipient.id]));
 
@@ -469,7 +466,7 @@ app.post('/admin/:adminToken/delete/:participantId', async (req, res) => {
   res.redirect(`/admin/${game.adminToken}`);
 });
 
-// Regenerate ALL Links (Re-shuffle & new tokens)
+// Regenerate All
 app.post('/admin/:adminToken/regenerate', async (req, res) => {
   const game = findGameByAdminToken(req.params.adminToken);
   if (!game) return res.status(404).send('Not found');
