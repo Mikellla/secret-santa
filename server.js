@@ -1,4 +1,4 @@
-// server.js — Surprise Santa (Upstash Redis + Georgian UI + admin hand-off + sharing + image background)
+// server.js — Surprise Santa (Online Background + Georgian UI + Upstash)
 import express from 'express';
 import crypto from 'node:crypto';
 import { Redis } from '@upstash/redis';
@@ -87,19 +87,20 @@ html,body{height:100%}
 body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;
   font:16px/1.55 "Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:#f0eaff;
-  /* Background Image Setup */
-  background-image: url('/bg.jpg');
+  
+  /* Stunning New Year Background from Unsplash */
+  background-image: url('https://images.unsplash.com/photo-1543886577-520cc763ad63?q=80&w=2000&auto=format&fit=crop');
   background-size: cover;
-  background-position: center bottom;
+  background-position: center center;
   background-attachment: fixed;
   background-color: #0d1b2a;
   overflow-x:hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Dark gradient overlay so text is readable over the image */
+/* Dark overlay to make text readable */
 body::before{content:'';position:fixed;inset:0;
-  background:linear-gradient(to bottom, rgba(10,15,30,0.3) 0%, rgba(10,15,30,0.7) 50%, rgba(10,15,30,0.95) 100%);
+  background:linear-gradient(to bottom, rgba(10,15,30,0.4) 0%, rgba(10,15,30,0.8) 50%, rgba(10,15,30,0.95) 100%);
   z-index:-2;pointer-events:none}
 
 /* --- Animated Snowflakes --- */
