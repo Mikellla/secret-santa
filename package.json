@@ -4,6 +4,6 @@
   "scripts": { "start": "node server.js" },
   "dependencies": {
     "express": "^4.19.2",
-    "@vercel/kv": "^3.0.0"
+    "@upstash/redis": "^1.34.3"
   }
 }

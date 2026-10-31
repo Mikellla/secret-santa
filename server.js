@@ -1,37 +1,41 @@
-// server.js — Surprise Santa (Vercel KV + Georgian UI + admin hand-off)
+// server.js — Surprise Santa (Upstash Redis + Georgian UI + admin hand-off)
 import express from 'express';
 import crypto from 'node:crypto';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const BASE_URL = (process.env.BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 
+// Upstash Redis client — automatically reads UPSTASH_REDIS_REST_URL / TOKEN
+// (or the legacy KV_REST_API_URL / TOKEN if those are still present)
+const redis = Redis.fromEnv();
+
 app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-/* ---------------- storage (Vercel KV) ---------------- */
+/* ---------------- storage (Upstash Redis) ---------------- */
 let db = { games: {} };
 
 async function loadDb() {
   try {
-    const saved = await kv.get('santa:db');
+    const saved = await redis.get('santa:db');
     if (saved) db = saved;
   } catch (e) {
-    console.warn('KV load failed:', e.message);
+    console.warn('Redis load failed:', e.message);
   }
 }
 async function persist() {
   try {
-    await kv.set('santa:db', db);
+    await redis.set('santa:db', db);
     return true;
   } catch (e) {
-    console.error('KV persist failed:', e.message);
+    console.error('Redis persist failed:', e.message);
     return false;
   }
 }
 
-// Always serve from latest KV state (consistent across serverless instances)
+// Always serve from latest Redis state (consistent across serverless instances)
 app.use(async (req, res, next) => {
   await loadDb();
   next();
@@ -149,7 +153,6 @@ function findParticipantByToken(token) {
 
 /* ---------------- routes ---------------- */
 
-// Home — create a game
 app.get('/', (req, res) => {
   res.send(layout('საიდუმლო სანტა', `
     <div class="banner">🎄 გილოცავთ ახალ წელს! 🎁</div>
@@ -167,7 +170,6 @@ app.get('/', (req, res) => {
     </form>`));
 });
 
-// Create game
 app.post('/create', async (req, res) => {
   const title = (req.body.title || '').trim().slice(0, 80) || 'საიდუმლო სანტა';
   const raw = String(req.body.names || '').split('\n').map(s => s.trim()).filter(Boolean);
@@ -216,7 +218,6 @@ app.post('/create', async (req, res) => {
   res.redirect(`/admin/${game.adminToken}?created=1`);
 });
 
-// Admin page
 app.get('/admin/:adminToken', (req, res) => {
   const game = findGameByAdminToken(req.params.adminToken);
   if (!game) return res.status(404).send(layout('ვერ მოიძებნა', `
@@ -279,7 +280,6 @@ app.get('/admin/:adminToken', (req, res) => {
     </form>`));
 });
 
-// Transfer admin (rotates token, invalidates old link)
 app.post('/admin/:adminToken/transfer', async (req, res) => {
   const game = findGameByAdminToken(req.params.adminToken);
   if (!game) return res.status(404).send(layout('ვერ მოიძებნა', `
@@ -298,7 +298,6 @@ app.post('/admin/:adminToken/transfer', async (req, res) => {
   res.redirect(`/admin/${game.adminToken}?transferred=1`);
 });
 
-// Participant reveal
 app.get('/r/:token', async (req, res) => {
   const found = findParticipantByToken(req.params.token);
   if (!found) return res.status(404).send(layout('ვერ მოიძებნა', `
@@ -325,7 +324,7 @@ app.get('/r/:token', async (req, res) => {
   const alreadyViewed = !!participant.viewedAt;
   if (!alreadyViewed) {
     participant.viewedAt = new Date().toISOString();
-    await persist(); // mark as viewed; failure is non-critical
+    await persist();
   }
 
   res.send(layout('თქვენი დავალება', `
@@ -342,7 +341,6 @@ app.get('/r/:token', async (req, res) => {
     </p>`));
 });
 
-// Fallback
 app.use((req, res) => res.status(404).send(layout('ვერ მოიძებნა', `
   <div class="err">გვერდი ვერ მოიძებნა.</div>
   <p><a href="/">← მთავარი</a></p>`)));
