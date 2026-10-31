@@ -1,4 +1,4 @@
-// server.js — Surprise Santa (Bulletproof Background via <img> tag)
+// server.js — Surprise Santa (Local Image + Admin Tools)
 import express from 'express';
 import crypto from 'node:crypto';
 import { Redis } from '@upstash/redis';
@@ -91,12 +91,12 @@ function layout(title, body, extra = '') {
 html,body{margin:0;padding:0;min-height:100vh;
   font:16px/1.55 "Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:#f0eaff;
-  background-color:#1a0f2e; /* Festive fallback color, NOT blue */
+  background-color:#1a0f2e; /* Festive fallback color */
   overflow-x:hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 1. The Background Image pinned to the back */
+/* 1. The Background Image pinned to the back (Loads from YOUR local file) */
 .bg-image {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
@@ -230,8 +230,8 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 }
 </style></head><body>
 
-<!-- THIS IS THE BULLETPROOF BACKGROUND -->
-<img class="bg-image" src="https://images.unsplash.com/photo-1543886577-520cc763ad63?q=80&w=2000&auto=format&fit=crop" alt="">
+<!-- THIS LOADS YOUR LOCAL IMAGE -->
+<img class="bg-image" src="/bg.jpg" alt="Winter Background">
 <div class="bg-overlay"></div>
 <div class="snow-layer"></div>
 
@@ -369,7 +369,7 @@ app.get('/admin/:adminToken', (req, res) => {
     <hr>
     <h2>მართვა</h2>
     <p class="muted" style="margin-bottom:12px;font-size:14px">
-      თუ ტესტირების დროს ბმულები გააზიარეთ ან რაღაც შეიცვალა, შეგიძლიათ ყველა ბმული ერთდროულად განაახლოთ (თამაში ხელახლა გადათამაშდება).
+      თუ ტესტირების დროს ბმულები გააზიარეთ ან რაღაც შეიცვალა, შეგიძლიათ ყველა ბმული ერთდროულად განაახლოთ.
     </p>
     <form method="post" action="/admin/${game.adminToken}/regenerate" onsubmit="return confirm('ნამდვილად გსურთ ყველა ბმულის განახლება? ძველი ბმულები გაუქმდება.')" style="margin-bottom:16px;">
       <button type="submit" class="secondary">ყველა ბმულის განახლება (გადათამაშება)</button>
@@ -469,7 +469,6 @@ app.get('/admin/:adminToken', (req, res) => {
   res.send(layout('ბმულები — ' + game.title, body, extra));
 });
 
-// Delete Participant
 app.post('/admin/:adminToken/delete/:participantId', async (req, res) => {
   const game = findGameByAdminToken(req.params.adminToken);
   if (!game) return res.status(404).send('Not found');
@@ -491,7 +490,6 @@ app.post('/admin/:adminToken/delete/:participantId', async (req, res) => {
   res.redirect(`/admin/${game.adminToken}`);
 });
 
-// Regenerate All
 app.post('/admin/:adminToken/regenerate', async (req, res) => {
   const game = findGameByAdminToken(req.params.adminToken);
   if (!game) return res.status(404).send('Not found');
@@ -508,7 +506,6 @@ app.post('/admin/:adminToken/regenerate', async (req, res) => {
   res.redirect(`/admin/${game.adminToken}?regenerated=1`);
 });
 
-// Transfer Admin
 app.post('/admin/:adminToken/transfer', async (req, res) => {
   const game = findGameByAdminToken(req.params.adminToken);
   if (!game) return res.status(404).send('Not found');
@@ -518,7 +515,6 @@ app.post('/admin/:adminToken/transfer', async (req, res) => {
   res.redirect(`/admin/${game.adminToken}?transferred=1`);
 });
 
-// Participant Reveal
 app.get('/r/:token', async (req, res) => {
   const found = findParticipantByToken(req.params.token);
   if (!found) return res.status(404).send(layout('ვერ მოიძებნა', `
