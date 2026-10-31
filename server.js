@@ -164,7 +164,7 @@ html,body{margin:0;padding:0;min-height:100vh;
 }
 
 /* Explicit image layer plus a versioned root-background fallback for mobile browsers */
-body{position:relative;isolation:isolate;background:#1a0f2e}
+body{position:relative;isolation:isolate;background:transparent}
 .bg-image {
   position: fixed;
   inset: 0;
