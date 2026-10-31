@@ -90,7 +90,7 @@ const newToken = () => crypto.randomBytes(16).toString('base64url');
 
 function organizerCodeMatches(candidate) {
   const configured = process.env.ORGANIZER_ACCESS_CODE;
-  if (typeof configured !== 'string' || configured.length < 24) return false;
+  if (typeof configured !== 'string' || configured.length === 0) return false;
   if (typeof candidate !== 'string') return false;
   const expected = Buffer.from(configured, 'utf8');
   const supplied = Buffer.from(candidate, 'utf8');
@@ -436,7 +436,7 @@ app.get('/', (req, res) => {
 });
 
 app.post('/create', async (req, res) => {
-  if (!process.env.ORGANIZER_ACCESS_CODE || process.env.ORGANIZER_ACCESS_CODE.length < 24) {
+  if (typeof process.env.ORGANIZER_ACCESS_CODE !== 'string' || process.env.ORGANIZER_ACCESS_CODE.length === 0) {
     return res.status(503).send(layout('ორგანიზატორის წვდომა მიუწვდომელია', `
       <div class="err">ორგანიზატორის კოდი ჯერ არ არის დაყენებული. გთხოვთ, დაუკავშირდეთ აპლიკაციის ადმინისტრატორს.</div>
       <p><a href="/">← მთავარი</a></p>`));
