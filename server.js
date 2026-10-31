@@ -1,4 +1,4 @@
-// server.js — Surprise Santa (Stable Layout + Admin Tools)
+// server.js — Surprise Santa (Bulletproof Background via <img> tag)
 import express from 'express';
 import crypto from 'node:crypto';
 import { Redis } from '@upstash/redis';
@@ -81,7 +81,7 @@ function makeAssignments(people) {
 function layout(title, body, extra = '') {
   return `<!doctype html><html lang="ka"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#0a1020">
+<meta name="theme-color" content="#1a0f2e">
 <meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -91,40 +91,59 @@ function layout(title, body, extra = '') {
 html,body{margin:0;padding:0;min-height:100vh;
   font:16px/1.55 "Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:#f0eaff;
-  background-color:#0a1020;
+  background-color:#1a0f2e; /* Festive fallback color, NOT blue */
   overflow-x:hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 1. Reliable Background Image */
-body{
-  background-image:url('https://images.unsplash.com/photo-1543886577-520cc763ad63?q=80&w=2000&auto=format&fit=crop&v=6');
-  background-size:cover;
-  background-position:center bottom;
-  background-attachment:fixed;
+/* 1. The Background Image pinned to the back */
+.bg-image {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: -3;
+  pointer-events: none;
 }
 
-/* 2. Dark Overlay for Readability */
-body::before{content:'';position:fixed;inset:0;
-  background:linear-gradient(to bottom, rgba(10,15,30,0.3) 0%, rgba(10,15,30,0.8) 50%, rgba(10,15,30,0.95) 100%);
-  z-index:-2;pointer-events:none}
+/* 2. Dark overlay to make text readable */
+.bg-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(10,15,30,0.3) 0%, rgba(10,15,30,0.8) 50%, rgba(10,15,30,0.95) 100%);
+  z-index: -2;
+  pointer-events: none;
+}
 
-/* 3. Animated Snow (Using body::after to avoid layout bugs) */
-body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
+/* 3. Animated Snow */
+.snow-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+.snow-layer::after {
+  content: '';
+  position: absolute;
+  top: -2000px; left: 0; right: 0; bottom: 0;
   background-image:
-    radial-gradient(2px 2px at 20px 30px, #fff, transparent),
-    radial-gradient(3px 3px at 80px 90px, rgba(255,255,255,.8), transparent),
-    radial-gradient(1.5px 1.5px at 140px 40px, #fff, transparent),
+    radial-gradient(3px 3px at 20px 30px, #fff, transparent),
+    radial-gradient(2px 2px at 80px 90px, rgba(255,255,255,.8), transparent),
+    radial-gradient(4px 4px at 140px 40px, #fff, transparent),
     radial-gradient(2px 2px at 200px 150px, rgba(255,255,255,.7), transparent),
     radial-gradient(3px 3px at 260px 60px, #fff, transparent);
-  background-size:300px 300px;background-repeat:repeat;
-  animation:snow-fall 12s linear infinite}
-@keyframes snow-fall{from{background-position:0 0}to{background-position:0 2000px}}
+  background-size: 300px 300px;
+  background-repeat: repeat;
+  animation: snow-fall 12s linear infinite;
+}
+@keyframes snow-fall {
+  from { transform: translateY(0); }
+  to { transform: translateY(2000px); }
+}
 
 /* App Layout */
 body{display:grid;place-items:center;padding:20px}
 main{position:relative;z-index:1;width:100%;max-width:480px;
-  background:rgba(20,25,45,0.8);
+  background:rgba(20,25,45,0.85);
   border:1px solid rgba(255,255,255,0.15);
   border-radius:24px;padding:24px;
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
@@ -210,6 +229,12 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
   .row .actions button{flex:1}
 }
 </style></head><body>
+
+<!-- THIS IS THE BULLETPROOF BACKGROUND -->
+<img class="bg-image" src="https://images.unsplash.com/photo-1543886577-520cc763ad63?q=80&w=2000&auto=format&fit=crop" alt="">
+<div class="bg-overlay"></div>
+<div class="snow-layer"></div>
+
 <main>${body}</main>
 ${extra}
 </body></html>`;
