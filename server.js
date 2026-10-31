@@ -1,6 +1,7 @@
 // server.js — Surprise Santa (Local Image + Admin Tools)
 import express from 'express';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { Redis } from '@upstash/redis';
 
 const app = express();
@@ -11,6 +12,7 @@ const redis = Redis.fromEnv();
 
 app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.get('/bg.jpg', (req, res) => res.sendFile(fileURLToPath(new URL('./bg.jpg', import.meta.url))));
 
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
