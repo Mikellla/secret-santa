@@ -691,6 +691,31 @@ app.post('/admin/:adminToken/transfer', async (req, res) => {
   res.redirect(`/admin/${game.adminToken}?transferred=1`);
 });
 
+app.post('/r/:token/wishlist', async (req, res) => {
+  const found = findParticipantByToken(req.params.token);
+  if (!found) return res.status(404).send(layout('ვერ მოიძებნა', '<div class="err">ეს ბმული არ არის ვალიდური (შესაძლოა განახლდა).</div>'));
+
+  const { participant } = found;
+  const wishes = String(req.body.wishes || '')
+    .split('\n')
+    .map(value => value.trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, 3);
+  const interests = String(req.body.interests || '').trim().slice(0, 140);
+  const hint = String(req.body.hint || '').trim().slice(0, 140);
+  const previousWishlist = participant.wishlist;
+
+  participant.wishlist = { wishes, interests, hint, updatedAt: new Date().toISOString() };
+  const ok = await persist();
+  if (!ok) {
+    if (previousWishlist === undefined) delete participant.wishlist;
+    else participant.wishlist = previousWishlist;
+    return res.status(500).send(layout('შეცდომა', '<div class="err">სურვილების შენახვა ვერ მოხერხდა. სცადეთ თავიდან.</div>'));
+  }
+
+  res.redirect('/r/' + req.params.token + '?saved=1');
+});
+
 app.get('/r/:token', async (req, res) => {
   const found = findParticipantByToken(req.params.token);
   if (!found) return res.status(404).send(layout('ვერ მოიძებნა', `
@@ -701,12 +726,35 @@ app.get('/r/:token', async (req, res) => {
   const recipient = game.participants.find(p => p.id === game.assignments[participant.id]);
 
   if (req.query.reveal !== '1') {
+    const wishlist = participant.wishlist || {};
+    const wishesText = Array.isArray(wishlist.wishes) ? wishlist.wishes.join('\n') : '';
+    const savedBanner = req.query.saved === '1'
+      ? '<div class="ok">შენი მინიშნებები შენახულია! 🎁</div>'
+      : '';
     return res.send(layout('თქვენი დავალება', `
       <div class="banner">🎄 გილოცავთ ახალ წელს! 🎁</div>
       <h1 class="greet">${esc(game.title)}</h1>
-      <p class="muted center" style="margin-bottom:24px">
-        გამარჯობა, <strong>${esc(participant.name)}</strong>!<br>მზად ხართ გაიგოთ ვის უნდა აჩუქოთ საჩუქარი?
+      <p class="muted center" style="margin-bottom:18px">
+        გამარჯობა, <strong>${esc(participant.name)}</strong>!<br>სანამ შენს დავალებას ნახავ, შეგიძლია სანტას პატარა მინიშნებები დაუტოვო.
       </p>
+      ${savedBanner}
+      <section class="app-card">
+        <h2>🎁 შენი სურვილების სია</h2>
+        <p style="font-size:14px;margin-top:0">დაუტოვე შენს სანტას მაქსიმუმ სამი სურვილი და რამდენიმე მინიშნება. ამას მხოლოდ ის მონაწილე ნახავს, ვისაც შენთვის საჩუქრის ყიდვა შეხვდა.</p>
+        <form method="post" action="/r/${participant.token}/wishlist">
+          <label>სურვილები — თითო ცალკე ხაზზე, მაქსიმუმ 3
+            <textarea name="wishes" rows="3" maxlength="260" placeholder="მაგ. წიგნი, თბილი წინდები, ყავის ჭიქა">${esc(wishesText)}</textarea>
+          </label>
+          <label>რა გიყვარს ან რა გაინტერესებს?
+            <input name="interests" maxlength="140" value="${esc(wishlist.interests || '')}" placeholder="მაგ. წიგნები, ლაშქრობა, ყავა">
+          </label>
+          <label>პატარა მინიშნება სანტასთვის
+            <input name="hint" maxlength="140" value="${esc(wishlist.hint || '')}" placeholder="მაგ. მიყვარს პრაქტიკული საჩუქრები">
+          </label>
+          <button type="submit" class="secondary">მინიშნებების შენახვა</button>
+        </form>
+      </section>
+      <p class="muted center" style="font-size:14px;margin-bottom:12px">სურვილების შევსება აუცილებელი არ არის — შეგიძლია პირდაპირ გააგრძელო.</p>
       <p class="center">
         <a href="/r/${participant.token}?reveal=1" style="font-size:17px;font-weight:700;display:inline-block;padding:16px 24px;background:linear-gradient(180deg,#e23b3b,#b81f2f);color:#fff;border-radius:14px;box-shadow:0 8px 20px rgba(226,59,59,.4);text-decoration:none;width:100%">
           ჩემი დავალების ნახვა →
@@ -719,6 +767,20 @@ app.get('/r/:token', async (req, res) => {
     await persist();
   }
 
+  const recipientWishlist = recipient.wishlist || {};
+  const recipientWishes = Array.isArray(recipientWishlist.wishes) ? recipientWishlist.wishes : [];
+  const wishlistDetails =
+    (recipientWishlist.interests ? '<p><strong>რა უყვარს:</strong> ' + esc(recipientWishlist.interests) + '</p>' : '') +
+    (recipientWishlist.hint ? '<p><strong>მინიშნება:</strong> ' + esc(recipientWishlist.hint) + '</p>' : '');
+  const wishlistItemsHtml = recipientWishes.map(wish => '<li>🎁 ' + esc(wish) + '</li>').join('');
+  const wishlistCard = recipientWishes.length || wishlistDetails
+    ? '<section class="app-card"><h2>✨ პატარა მინიშნებები შენთვის</h2>' +
+      '<p style="font-size:14px;margin-top:0">ადამიანმა, რომელსაც საჩუქარს უკეთებ, ეს სურვილები დაგიტოვა:</p>' +
+      (wishlistItemsHtml ? '<ul style="padding-left:22px;line-height:1.9">' + wishlistItemsHtml + '</ul>' : '') +
+      wishlistDetails + '</section>'
+    : '<section class="app-card"><h2>✨ სანტას მინიშნებები</h2>' +
+      '<p style="font-size:14px;margin-bottom:0">შენს ადრესატს ჯერ სურვილები არ დაუტოვებია. შეგიძლია თავად მოიფიქრო სიურპრიზი! 🎁</p></section>';
+
   res.send(layout('თქვენი დავალება', `
     <div class="banner">🎄 გილოცავთ ახალ წელს! 🎁</div>
     <h1 class="greet">${esc(game.title)}</h1>
@@ -726,11 +788,13 @@ app.get('/r/:token', async (req, res) => {
       <strong>${esc(participant.name)}</strong>, თქვენ საჩუქარს აძლევთ:
     </p>
     <div class="big">${esc(recipient.name)}</div>
+    ${wishlistCard}
     <div style="background:rgba(255,255,255,0.05);padding:16px;border-radius:12px;margin-top:24px">
       <p class="muted center" style="margin:0;font-size:14px">
         🤫 საიდუმლოდ შეინახეთ — და ნუ გახსნით ამ ბმულს მის თანდასწრებით.
       </p>
     </div>
+    <p class="center" style="margin-top:18px"><a href="/r/${participant.token}" style="font-size:14px">ჩემი სურვილების შეცვლა</a></p>
     <p class="muted center" style="margin-top:24px;font-size:14px;color:#ffd166">
       ბედნიერებას გისურვებთ ახალ წელს! ✨
     </p>`));
