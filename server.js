@@ -1,6 +1,7 @@
 // server.js — Surprise Santa (Local Image + Admin Tools)
 import express from 'express';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { Redis } from '@upstash/redis';
 
 const app = express();
@@ -11,6 +12,7 @@ const redis = Redis.fromEnv();
 
 app.set('trust proxy', 1);
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.get('/bg.jpg', (req, res) => res.sendFile(fileURLToPath(new URL('./bg.jpg', import.meta.url))));
 
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -37,6 +39,46 @@ async function persist() {
     return false;
   }
 }
+
+app.get('/manifest.webmanifest', (req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.type('application/manifest+json').send(JSON.stringify({
+    id: '/',
+    name: 'საიდუმლო სანტა',
+    short_name: 'სანტა',
+    description: 'შექმენი გათამაშება და გაიგე, ვის უნდა აჩუქო.',
+    start_url: '/?tab=home',
+    scope: '/',
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#07152b',
+    theme_color: '#07152b',
+    icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }]
+  }));
+});
+
+app.get('/icon.svg', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.type('image/svg+xml').send('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#07152b"/><path d="M94 222h324v218H94z" fill="#d6a23f" stroke="#ffe2a0" stroke-width="18"/><path d="M70 176h372v82H70z" fill="#f0c15c" stroke="#ffe2a0" stroke-width="18"/><path d="M235 176h42v264h-42z" fill="#fff0c2"/><path d="M256 176c-95-14-117-91-67-113 42-19 67 44 67 113zm0 0c95-14 117-91 67-113-42-19-67 44-67 113z" fill="none" stroke="#ffe2a0" stroke-width="23" stroke-linecap="round" stroke-linejoin="round"/><path d="M153 324h56m94 0h56" stroke="#fff0c2" stroke-width="16" stroke-linecap="round"/></svg>');
+});
+
+app.get('/sw.js', (req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.set('Service-Worker-Allowed', '/');
+  res.type('application/javascript').send(`const CACHE='secret-santa-static-v1';
+const ASSETS=['/manifest.webmanifest','/icon.svg'];
+self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
+self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))));
+self.addEventListener('fetch',event=>{
+  const request=event.request;
+  if(request.method!=='GET') return;
+  const url=new URL(request.url);
+  if(url.origin!==self.location.origin) return;
+  if(ASSETS.includes(url.pathname)){
+    event.respondWith(caches.match(request).then(cached=>cached||fetch(request)));
+  }
+});`);
+});
 
 app.use(async (req, res, next) => {
   await loadDb();
@@ -81,17 +123,23 @@ function makeAssignments(people) {
 function layout(title, body, extra = '') {
   return `<!doctype html><html lang="ka"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#1a0f2e">
+<meta name="theme-color" content="#07152b">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
 <meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
+html{background:#1a0f2e}
 html,body{margin:0;padding:0;min-height:100vh;
   font:16px/1.55 "Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:#f0eaff;
-  background-color:#1a0f2e; /* Festive fallback color */
+  background-color:transparent;
   overflow-x:hidden;
   -webkit-tap-highlight-color: transparent;
 }
@@ -99,27 +147,29 @@ html,body{margin:0;padding:0;min-height:100vh;
 /* 1. The Background Image pinned to the back (Loads from YOUR local file) */
 .bg-image {
   position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  z-index: -3;
+  z-index: 0;
   pointer-events: none;
 }
 
-/* 2. Dark overlay to make text readable */
+/* Overlay sits above the image and below all page content */
 .bg-overlay {
   position: fixed;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(10,15,30,0.3) 0%, rgba(10,15,30,0.8) 50%, rgba(10,15,30,0.95) 100%);
-  z-index: -2;
+  background: linear-gradient(to bottom, rgba(10,15,30,0.18) 0%, rgba(10,15,30,0.48) 55%, rgba(10,15,30,0.72) 100%);
+  z-index: 0;
   pointer-events: none;
 }
 
-/* 3. Animated Snow */
+/* Animated snow */
 .snow-layer {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: -1;
+  z-index: 0;
 }
 .snow-layer::after {
   content: '';
@@ -141,7 +191,7 @@ html,body{margin:0;padding:0;min-height:100vh;
 }
 
 /* App Layout */
-body{display:grid;place-items:center;padding:20px}
+body{display:grid;place-items:center;padding:20px 20px 110px}
 main{position:relative;z-index:1;width:100%;max-width:480px;
   background:rgba(20,25,45,0.85);
   border:1px solid rgba(255,255,255,0.15);
@@ -186,11 +236,16 @@ button.danger:hover{background:rgba(226,59,59,0.25)}
 a{color:#8fbcff;word-break:break-all;text-decoration:none}
 a:hover{text-decoration:underline}
 
-.row{display:flex;gap:12px;align-items:center;justify-content:space-between;
-  padding:14px;border:1px solid rgba(255,255,255,0.1);border-radius:14px;margin-bottom:12px;
-  background:rgba(0,0,0,0.3);flex-wrap:wrap}
-.row .info{flex:1;min-width:0}
-.row .actions{display:flex;gap:8px;flex-wrap:wrap}
+.row{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;
+  padding:14px;border:1px solid rgba(255,255,255,0.12);border-radius:16px;margin-bottom:12px;
+  background:rgba(5,12,28,0.72)}
+.row .info{min-width:0}
+.row .participant-link{display:inline-flex;align-items:center;margin-top:9px;padding:8px 11px;
+  border-radius:9px;background:rgba(143,188,255,0.12);font-size:13px;word-break:normal}
+.row .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+.row .actions button{width:100%;padding:11px 8px;font-size:13px}
+.row .actions form{grid-column:1/-1}
+.row .actions form button{background:rgba(226,59,59,0.12);box-shadow:none}
 .name{font-weight:700;margin-bottom:4px;font-size:16px}
 .tag{font-size:12px;color:#9ca3af;margin-top:4px}
 .big{font-size:36px;font-weight:800;color:#ffd166;margin:24px 0;text-align:center;
@@ -221,13 +276,27 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
   display:grid;place-items:center;background:transparent;border:0;font-size:20px;color:#9ca3af;border-radius:50%;width:auto}
 
 @media (max-width:480px){
-  body{padding:0;place-items:end center}
+  body{padding:0 0 88px;place-items:end center}
   main{border-radius:24px 24px 0 0;padding:28px 20px;min-height:90vh;border-bottom:none}
   h1{font-size:22px}
   .big{font-size:32px}
-  .row .actions{width:100%;margin-top:8px}
-  .row .actions button{flex:1}
+  .row .actions{width:100%}
+  .row .actions button{flex:initial}
 }
+.bottom-nav{position:fixed;z-index:80;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,520px);display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:9px 8px calc(10px + env(safe-area-inset-bottom));background:rgba(5,13,29,.96);border-top:1px solid rgba(255,209,102,.25);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.bottom-nav a{display:flex;flex-direction:column;align-items:center;gap:2px;color:#aebbd0;font-size:11px;line-height:1.3;word-break:normal;text-decoration:none;padding:4px 2px}
+.bottom-nav a span{font-size:20px;line-height:1.2}
+.bottom-nav a.active{color:#ffd166}
+.app-heading{font-size:30px;text-align:center;margin:8px 0 10px;color:#ffd166}
+.app-intro{text-align:center;color:#cbd5e1;margin:0 0 20px}
+.app-card{background:rgba(5,15,34,.72);border:1px solid rgba(255,209,102,.24);border-radius:18px;padding:18px;margin:14px 0}
+.app-card h2{color:#ffd166}
+.app-card p{color:#cbd5e1}
+.app-cta{display:block;text-align:center;padding:15px 18px;border-radius:14px;background:linear-gradient(180deg,#e7b84d,#c58a22);color:#111827;font-weight:800;text-decoration:none;margin:12px 0}
+.app-link-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;margin:10px 0;background:rgba(0,0,0,.22)}
+.app-link-row a{display:block;min-width:0;overflow-wrap:anywhere}
+.install-btn{background:linear-gradient(180deg,#e7b84d,#c58a22);color:#111827;box-shadow:none;margin-top:10px}
+.profile-input{margin:0 0 12px}
 </style></head><body>
 
 <!-- THIS LOADS YOUR LOCAL IMAGE -->
@@ -237,6 +306,71 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 
 <main>${body}</main>
 ${extra}
+<nav class="bottom-nav" aria-label="Main navigation">
+  <a href="/?tab=home" data-tab="home"><span>⌂</span>მთავარი</a>
+  <a href="/?tab=exchanges" data-tab="exchanges"><span>▦</span>გათამაშებები</a>
+</nav>
+<script>
+(function(){
+  var path=window.location.pathname;
+  function read(key){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}}
+  function save(key,item){
+    var items=read(key).filter(function(x){return x.url!==item.url});
+    items.unshift(item);
+    localStorage.setItem(key,JSON.stringify(items.slice(0,30)));
+  }
+  if(path.indexOf('/admin/')===0){
+    save('ss_exchanges',{title:(document.querySelector('main h1')||{}).textContent||'საიდუმლო სანტა',url:path});
+  }
+  var tab=new URLSearchParams(window.location.search).get('tab')||'home';
+  document.querySelectorAll('.bottom-nav a').forEach(function(a){
+    if(a.dataset.tab===tab && path==='/') a.classList.add('active');
+    if(path.indexOf('/admin/')===0 && a.dataset.tab==='exchanges') a.classList.add('active');
+  });
+  function renderList(id,key,empty,label){
+    var box=document.getElementById(id); if(!box) return;
+    var items=read(key);
+    if(!items.length){box.textContent=empty;return;}
+    items.forEach(function(item){
+      var row=document.createElement('div');row.className='app-link-row';
+      var name=document.createElement('strong');name.textContent=item.title||label;
+      var link=document.createElement('a');link.href=item.url;link.textContent='გახსნა →';
+      row.appendChild(name);row.appendChild(link);box.appendChild(row);
+    });
+  }
+  renderList('saved-exchanges','ss_exchanges','ჯერ გათამაშება არ შეგიქმნია.','საიდუმლო სანტა');
+  var profile=document.getElementById('profile-name');
+  if(profile) profile.value=localStorage.getItem('ss_profile_name')||'';
+  var saveProfile=document.getElementById('save-profile');
+  if(saveProfile) saveProfile.addEventListener('click',function(){
+    if(profile) localStorage.setItem('ss_profile_name',profile.value.trim());
+    saveProfile.textContent='შენახულია ✓';
+  });
+  var clear=document.getElementById('clear-local-data');
+  if(clear) clear.addEventListener('click',function(){
+    localStorage.removeItem('ss_exchanges');localStorage.removeItem('ss_gifts');
+    var a=document.getElementById('saved-exchanges');var b=document.getElementById('saved-gifts');
+    if(a)a.textContent='ჯერ გათამაშება არ შეგიქმნია.';
+    if(b)b.textContent='პირადი ბმული ჯერ არ გაგიხსნია.';
+  });
+  var install=document.getElementById('install-app');
+  var deferred=null;
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();deferred=e;if(install)install.hidden=false;
+  });
+  if(install){
+    var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+    install.hidden=!ios;
+    install.addEventListener('click',async function(){
+      if(deferred){deferred.prompt();await deferred.userChoice;deferred=null;}
+      else if(ios){alert('Safari-ში დააჭირე გაზიარების ღილაკს და აირჩიე „მთავარ ეკრანზე დამატება“.');}
+    });
+  }
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});
+  }
+})();
+</script>
 </body></html>`;
 }
 
@@ -254,19 +388,33 @@ function findParticipantByToken(token) {
 /* ---------------- routes ---------------- */
 
 app.get('/', (req, res) => {
+  const tab = ['home', 'exchanges'].includes(req.query.tab) ? req.query.tab : 'home';
+  if (tab === 'exchanges') {
+    return res.send(layout('ჩემი გათამაშებები', `
+      <div class="banner">🎄 საიდუმლო სანტა</div>
+      <h1 class="app-heading">ჩემი გათამაშებები</h1>
+      <p class="app-intro">შენ მიერ შექმნილი გათამაშებები.</p>
+      <section class="app-card"><h2>შენი გათამაშებები</h2><div id="saved-exchanges">იტვირთება…</div></section>
+      <p class="muted center" style="font-size:13px">ბმულები ინახება ამ მოწყობილობაზე.</p>
+      <a class="app-cta" href="/">ახალი გათამაშების შექმნა</a>`));
+  }
   res.send(layout('საიდუმლო სანტა', `
-    <div class="banner">🎄 გილოცავთ ახალ წელს! 🎁</div>
-    <h1 class="greet">საიდუმლო სანტა</h1>
-    <p class="muted">დაამატეთ მონაწილეები, შემდეგ გაუგზავნეთ თითოეულ მათგანს მისი პირადი ბმული.</p>
-    <form method="post" action="/create">
-      <label>თამაშის სახელი (არასავალდებულო)
-        <input name="title" maxlength="80" placeholder="საოჯახო ახალი წელი 2026">
-      </label>
-      <label>მონაწილეები — თითო სახელი ცალკე ხაზზე
-        <textarea name="names" required placeholder="ანა&#10;ბექა&#10;გიორგი"></textarea>
-      </label>
-      <button type="submit">თამაშის შექმნა და ბმულების მიღება</button>
-    </form>`));
+    <div class="banner">🎄 გაუზიარე სიხარული მეგობრებს 🎁</div>
+    <h1 class="app-heading">საიდუმლო სანტა</h1>
+    <p class="app-intro">შექმენი გათამაშება და გაუგზავნე მონაწილეებს პირადი ბმულები.</p>
+    <section class="app-card">
+      <h2>ახალი გათამაშების შექმნა</h2>
+      <form method="post" action="/create">
+        <label>გათამაშების სახელი
+          <input name="title" maxlength="80" placeholder="მაგ. მეგობრების ახალი წელი">
+        </label>
+        <label>მონაწილეები — თითო სახელი ცალკე ხაზზე
+          <textarea name="names" required placeholder="ანა\nდავითი\nსოფო"></textarea>
+        </label>
+        <button type="submit">გათამაშების შექმნა</button>
+      </form>
+    </section>
+    <p class="muted center" style="font-size:13px">რეგისტრაცია საჭირო არ არის.</p>`));
 });
 
 app.post('/create', async (req, res) => {
@@ -329,14 +477,14 @@ app.get('/admin/:adminToken', (req, res) => {
     <div class="row">
       <div class="info">
         <div class="name">${esc(p.name)}</div>
-        <a href="${url}">${url}</a>
         <div class="tag">${p.viewedAt ? '👀 ნანახია' : 'ჯერ არ გახსნილა'}</div>
+        <a class="participant-link" href="${url}" target="_blank" rel="noopener">პირადი ბმულის გახსნა ↗</a>
       </div>
       <div class="actions">
-        <button type="button" class="secondary copy-btn" data-url="${url}">კოპირება</button>
+        <button type="button" class="secondary copy-btn" data-url="${url}">ბმულის კოპირება</button>
         <button type="button" class="share-btn" data-name="${esc(p.name)}" data-url="${url}" data-title="${esc(game.title)}">გაზიარება</button>
         <form method="POST" action="/admin/${game.adminToken}/delete/${p.id}" style="margin:0;" onsubmit="return confirm('ნამდვილად გსურთ ${esc(p.name)}-ის წაშლა? თამაში ავტომატურად გადათამაშდება.')">
-          <button type="submit" class="danger">წაშლა</button>
+          <button type="submit" class="danger">მონაწილის წაშლა</button>
         </form>
       </div>
     </div>`;
