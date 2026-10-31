@@ -38,6 +38,46 @@ async function persist() {
   }
 }
 
+app.get('/manifest.webmanifest', (req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.type('application/manifest+json').send(JSON.stringify({
+    id: '/',
+    name: 'Secret Santa',
+    short_name: 'Santa',
+    description: 'Create a gift exchange and reveal your Secret Santa.',
+    start_url: '/?tab=home',
+    scope: '/',
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#07152b',
+    theme_color: '#07152b',
+    icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }]
+  }));
+});
+
+app.get('/icon.svg', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.type('image/svg+xml').send('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#07152b"/><path d="M94 222h324v218H94z" fill="#d6a23f" stroke="#ffe2a0" stroke-width="18"/><path d="M70 176h372v82H70z" fill="#f0c15c" stroke="#ffe2a0" stroke-width="18"/><path d="M235 176h42v264h-42z" fill="#fff0c2"/><path d="M256 176c-95-14-117-91-67-113 42-19 67 44 67 113zm0 0c95-14 117-91 67-113-42-19-67 44-67 113z" fill="none" stroke="#ffe2a0" stroke-width="23" stroke-linecap="round" stroke-linejoin="round"/><path d="M153 324h56m94 0h56" stroke="#fff0c2" stroke-width="16" stroke-linecap="round"/></svg>');
+});
+
+app.get('/sw.js', (req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.set('Service-Worker-Allowed', '/');
+  res.type('application/javascript').send(`const CACHE='secret-santa-static-v1';
+const ASSETS=['/manifest.webmanifest','/icon.svg'];
+self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
+self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))));
+self.addEventListener('fetch',event=>{
+  const request=event.request;
+  if(request.method!=='GET') return;
+  const url=new URL(request.url);
+  if(url.origin!==self.location.origin) return;
+  if(ASSETS.includes(url.pathname)){
+    event.respondWith(caches.match(request).then(cached=>cached||fetch(request)));
+  }
+});`);
+});
+
 app.use(async (req, res, next) => {
   await loadDb();
   next();
@@ -81,7 +121,12 @@ function makeAssignments(people) {
 function layout(title, body, extra = '') {
   return `<!doctype html><html lang="ka"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#1a0f2e">
+<meta name="theme-color" content="#07152b">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
 <meta name="robots" content="noindex,nofollow"><title>${esc(title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -141,7 +186,7 @@ html,body{margin:0;padding:0;min-height:100vh;
 }
 
 /* App Layout */
-body{display:grid;place-items:center;padding:20px}
+body{display:grid;place-items:center;padding:20px 20px 110px}
 main{position:relative;z-index:1;width:100%;max-width:480px;
   background:rgba(20,25,45,0.85);
   border:1px solid rgba(255,255,255,0.15);
@@ -221,14 +266,29 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
   display:grid;place-items:center;background:transparent;border:0;font-size:20px;color:#9ca3af;border-radius:50%;width:auto}
 
 @media (max-width:480px){
-  body{padding:0;place-items:end center}
+  body{padding:0 0 88px;place-items:end center}
   main{border-radius:24px 24px 0 0;padding:28px 20px;min-height:90vh;border-bottom:none}
   h1{font-size:22px}
   .big{font-size:32px}
   .row .actions{width:100%;margin-top:8px}
   .row .actions button{flex:1}
 }
-</style></head><body>
+.bottom-nav{position:fixed;z-index:80;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,520px);display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:9px 8px calc(10px + env(safe-area-inset-bottom));background:rgba(5,13,29,.96);border-top:1px solid rgba(255,209,102,.25);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.bottom-nav a{display:flex;flex-direction:column;align-items:center;gap:2px;color:#aebbd0;font-size:11px;line-height:1.3;word-break:normal;text-decoration:none;padding:4px 2px}
+.bottom-nav a span{font-size:20px;line-height:1.2}
+.bottom-nav a.active{color:#ffd166}
+.app-heading{font-size:30px;text-align:center;margin:8px 0 10px;color:#ffd166}
+.app-intro{text-align:center;color:#cbd5e1;margin:0 0 20px}
+.app-card{background:rgba(5,15,34,.72);border:1px solid rgba(255,209,102,.24);border-radius:18px;padding:18px;margin:14px 0}
+.app-card h2{color:#ffd166}
+.app-card p{color:#cbd5e1}
+.app-cta{display:block;text-align:center;padding:15px 18px;border-radius:14px;background:linear-gradient(180deg,#e7b84d,#c58a22);color:#111827;font-weight:800;text-decoration:none;margin:12px 0}
+.app-link-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;margin:10px 0;background:rgba(0,0,0,.22)}
+.app-link-row a{display:block;min-width:0;overflow-wrap:anywhere}
+.install-btn{background:linear-gradient(180deg,#e7b84d,#c58a22);color:#111827;box-shadow:none;margin-top:10px}
+.profile-input{margin:0 0 12px}
+@media (max-width:480px){
+  body{padding:0 0 88px;place-items:end center}
 
 <!-- THIS LOADS YOUR LOCAL IMAGE -->
 <img class="bg-image" src="/bg.jpg" alt="Winter Background">
@@ -237,6 +297,90 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 
 <main>${body}</main>
 ${extra}
+<nav class="bottom-nav" aria-label="Main navigation">
+  <a href="/?tab=home" data-tab="home"><span>⌂</span>Home</a>
+  <a href="/?tab=exchanges" data-tab="exchanges"><span>▦</span>Exchanges</a>
+  <a href="/?tab=gifts" data-tab="gifts"><span>🎁</span>My Gifts</a>
+  <a href="/?tab=profile" data-tab="profile"><span>♙</span>Profile</a>
+</nav>
+<script>
+(function(){
+  var path=window.location.pathname;
+  function read(key){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch(e){return []}}
+  function save(key,item){
+    var items=read(key).filter(function(x){return x.url!==item.url});
+    items.unshift(item);
+    localStorage.setItem(key,JSON.stringify(items.slice(0,30)));
+  }
+  if(path.indexOf('/admin/')===0){
+    save('ss_exchanges',{title:(document.querySelector('main h1')||{}).textContent||'Secret Santa',url:path});
+  }
+  if(path.indexOf('/r/')===0){
+    save('ss_gifts',{title:(document.querySelector('main h1')||{}).textContent||'Secret Santa gift',url:path});
+  }
+  var tab=new URLSearchParams(window.location.search).get('tab')||'home';
+  document.querySelectorAll('.bottom-nav a').forEach(function(a){
+    if(a.dataset.tab===tab && path==='/') a.classList.add('active');
+    if(path.indexOf('/admin/')===0 && a.dataset.tab==='exchanges') a.classList.add('active');
+    if(path.indexOf('/r/')===0 && a.dataset.tab==='gifts') a.classList.add('active');
+  });
+  function renderList(id,key,empty,label){
+    var box=document.getElementById(id); if(!box) return;
+    var items=read(key);
+    if(!items.length){box.textContent=empty;return;}
+    items.forEach(function(item){
+      var row=document.createElement('div');row.className='app-link-row';
+      var name=document.createElement('strong');name.textContent=item.title||label;
+      var link=document.createElement('a');link.href=item.url;link.textContent='Open →';
+      row.appendChild(name);row.appendChild(link);box.appendChild(row);
+    });
+  }
+  renderList('saved-exchanges','ss_exchanges','No exchanges saved on this device yet. Open an admin link and it will appear here.','Secret Santa');
+  renderList('saved-gifts','ss_gifts','No gift links saved yet. Open your personal gift link and it will appear here.','My gift');
+  var giftForm=document.getElementById('gift-link-form');
+  if(giftForm) giftForm.addEventListener('submit',function(e){
+    e.preventDefault();
+    var raw=(document.getElementById('gift-link-input').value||'').trim();
+    var token='';
+    try{
+      if(raw.indexOf('http')===0){var parsed=new URL(raw);var match=parsed.pathname.match(/^\\/r\\/([A-Za-z0-9_-]+)\\/?$/);if(match)token=match[1];}
+      else if(/^[A-Za-z0-9_-]{12,}$/.test(raw)) token=raw;
+    }catch(e){}
+    if(!token){alert('Please paste the personal gift link you received.');return;}
+    window.location.href='/r/'+token;
+  });
+  var profile=document.getElementById('profile-name');
+  if(profile) profile.value=localStorage.getItem('ss_profile_name')||'';
+  var saveProfile=document.getElementById('save-profile');
+  if(saveProfile) saveProfile.addEventListener('click',function(){
+    if(profile) localStorage.setItem('ss_profile_name',profile.value.trim());
+    saveProfile.textContent='Saved ✓';
+  });
+  var clear=document.getElementById('clear-local-data');
+  if(clear) clear.addEventListener('click',function(){
+    localStorage.removeItem('ss_exchanges');localStorage.removeItem('ss_gifts');
+    var a=document.getElementById('saved-exchanges');var b=document.getElementById('saved-gifts');
+    if(a)a.textContent='No exchanges saved on this device yet.';
+    if(b)b.textContent='No gift links saved yet.';
+  });
+  var install=document.getElementById('install-app');
+  var deferred=null;
+  window.addEventListener('beforeinstallprompt',function(e){
+    e.preventDefault();deferred=e;if(install)install.hidden=false;
+  });
+  if(install){
+    var ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+    install.hidden=!ios;
+    install.addEventListener('click',async function(){
+      if(deferred){deferred.prompt();await deferred.userChoice;deferred=null;}
+      else if(ios){alert('To install: tap Share in Safari, then choose “Add to Home Screen”.');}
+    });
+  }
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});
+  }
+})();
+</script>
 </body></html>`;
 }
 
@@ -254,19 +398,74 @@ function findParticipantByToken(token) {
 /* ---------------- routes ---------------- */
 
 app.get('/', (req, res) => {
-  res.send(layout('საიდუმლო სანტა', `
-    <div class="banner">🎄 გილოცავთ ახალ წელს! 🎁</div>
-    <h1 class="greet">საიდუმლო სანტა</h1>
-    <p class="muted">დაამატეთ მონაწილეები, შემდეგ გაუგზავნეთ თითოეულ მათგანს მისი პირადი ბმული.</p>
-    <form method="post" action="/create">
-      <label>თამაშის სახელი (არასავალდებულო)
-        <input name="title" maxlength="80" placeholder="საოჯახო ახალი წელი 2026">
-      </label>
-      <label>მონაწილეები — თითო სახელი ცალკე ხაზზე
-        <textarea name="names" required placeholder="ანა&#10;ბექა&#10;გიორგი"></textarea>
-      </label>
-      <button type="submit">თამაშის შექმნა და ბმულების მიღება</button>
-    </form>`));
+  const tab = ['home', 'exchanges', 'gifts', 'profile'].includes(req.query.tab) ? req.query.tab : 'home';
+  if (tab === 'exchanges') {
+    return res.send(layout('My Exchanges', `
+      <div class="banner">🎄 SECRET SANTA</div>
+      <h1 class="app-heading">My Exchanges</h1>
+      <p class="app-intro">Your organizer links saved on this device.</p>
+      <section class="app-card"><h2>Saved exchanges</h2><div id="saved-exchanges">Loading…</div></section>
+      <p class="muted center" style="font-size:13px">Exchange links are saved only in this browser. Keep your admin link somewhere safe too.</p>
+      <a class="app-cta" href="/">Create an exchange</a>`));
+  }
+  if (tab === 'gifts') {
+    return res.send(layout('My Gifts', `
+      <div class="banner">🎄 YOUR SECRET IS SAFE</div>
+      <h1 class="app-heading">My Gifts</h1>
+      <p class="app-intro">Personal gift links you have opened on this device.</p>
+      <section class="app-card"><h2>Your gift links</h2><div id="saved-gifts">Loading…</div></section>
+      <p class="muted center" style="font-size:13px">Only open your own personal link. Anyone holding that link can see the assignment.</p>
+      <a class="app-cta" href="/">Back to Home</a>`));
+  }
+  if (tab === 'profile') {
+    return res.send(layout('Profile', `
+      <div class="banner">🎁 SECRET SANTA</div>
+      <h1 class="app-heading">Your Profile</h1>
+      <p class="app-intro">A simple profile for this device. No account required.</p>
+      <section class="app-card">
+        <label>Your name
+          <input id="profile-name" class="profile-input" maxlength="60" placeholder="Enter your name">
+        </label>
+        <button id="save-profile" type="button">Save name</button>
+      </section>
+      <section class="app-card">
+        <h2>Install Secret Santa</h2>
+        <p>Keep the app on your phone's home screen for quick access.</p>
+        <button id="install-app" type="button" class="install-btn" hidden>Install app</button>
+        <p class="muted" style="font-size:13px;margin-top:10px">On iPhone: open this site in Safari, tap Share, then “Add to Home Screen”.</p>
+      </section>
+      <section class="app-card">
+        <h2>Device data</h2>
+        <p>Your saved exchange and gift links are stored locally in this browser.</p>
+        <button id="clear-local-data" type="button" class="secondary">Clear saved links</button>
+      </section>`));
+  }
+  res.send(layout('Secret Santa', `
+    <div class="banner">🎄 SHARE THE JOY · SPREAD THE CHEER 🎁</div>
+    <h1 class="app-heading">Secret Santa</h1>
+    <p class="app-intro">Create a gift exchange, share each person's private link, and let the surprise begin.</p>
+    <section class="app-card">
+      <h2>Create an exchange</h2>
+      <form method="post" action="/create">
+        <label>Exchange name
+          <input name="title" maxlength="80" placeholder="Family Christmas 2026">
+        </label>
+        <label>Participants — one name per line
+          <textarea name="names" required placeholder="Anna\nDavid\nSofia"></textarea>
+        </label>
+        <button type="submit">Create Secret Santa</button>
+      </form>
+    </section>
+    <section class="app-card">
+      <h2>Already have your personal gift link?</h2>
+      <form id="gift-link-form">
+        <label>Paste your personal link or token
+          <input id="gift-link-input" required placeholder="Paste the link you received">
+        </label>
+        <button type="submit" class="secondary">Open my gift</button>
+      </form>
+    </section>
+    <p class="muted center" style="font-size:13px">No account needed. Your organizer and personal links are saved on this device when you open them.</p>`));
 });
 
 app.post('/create', async (req, res) => {
