@@ -135,7 +135,7 @@ function layout(title, body, extra = '') {
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
-html{background:#1a0f2e}
+html{background:#1a0f2e url('/bg.jpg') center top / cover no-repeat;background-attachment:scroll}
 html,body{margin:0;padding:0;min-height:100vh;
   font:16px/1.55 "Noto Sans Georgian",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:#f0eaff;
