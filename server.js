@@ -24,6 +24,18 @@ app.get('/bg.jpg', (req, res) => {
   });
 });
 
+app.get('/bg-mobile.jpg', (req, res) => {
+  const imagePath = fileURLToPath(new URL('./bg-mobile.jpg', import.meta.url));
+  res.set({
+    'Content-Type': 'image/jpeg',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+    'X-Content-Type-Options': 'nosniff'
+  });
+  res.sendFile(imagePath, error => {
+    if (error) console.error('Mobile background image failed to load:', error.message);
+  });
+});
+
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   next();
@@ -299,6 +311,7 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
   display:grid;place-items:center;background:transparent;border:0;font-size:20px;color:#9ca3af;border-radius:50%;width:auto}
 
 @media (max-width:480px){
+  html{background-image:url('/bg-mobile.jpg?v=20261101-1')}
   body{padding:0 0 88px;place-items:end center}
   main{border-radius:24px 24px 0 0;padding:28px 20px;min-height:90vh;border-bottom:none}
   h1{font-size:22px}
@@ -323,7 +336,10 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 </style></head><body>
 
 <!-- THIS LOADS YOUR LOCAL IMAGE -->
-<img class="bg-image" src="/bg.jpg?v=20261031-1" alt="" aria-hidden="true" fetchpriority="high" decoding="async">
+<picture>
+  <source media="(max-width:480px)" srcset="/bg-mobile.jpg?v=20261101-1">
+  <img class="bg-image" src="/bg.jpg?v=20261031-1" alt="" aria-hidden="true" fetchpriority="high" decoding="async">
+</picture>
 <div class="bg-overlay"></div>
 <div class="snow-layer"></div>
 
