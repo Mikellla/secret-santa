@@ -333,6 +333,30 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 .app-link-row a{display:block;min-width:0;overflow-wrap:anywhere}
 .install-btn{background:linear-gradient(180deg,#e7b84d,#c58a22);color:#111827;box-shadow:none;margin-top:10px}
 .profile-input{margin:0 0 12px}
+
+/* Mobile: remove the frosted-glass layer so the portrait background remains visible */
+@media (max-width:480px){
+  .bg-overlay{background:transparent}
+  main{
+    background:rgba(20,25,45,.08);
+    border-color:rgba(255,255,255,.12);
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+    box-shadow:0 12px 32px rgba(0,0,0,.22);
+  }
+  .row,.app-card{
+    background:rgba(5,12,28,.10);
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
+  .app-link-row{background:rgba(0,0,0,.10)}
+  input,textarea{background:rgba(10,15,30,.16)}
+  .bottom-nav{
+    background:rgba(5,13,29,.68);
+    backdrop-filter:none;
+    -webkit-backdrop-filter:none;
+  }
+}
 </style></head><body>
 
 <!-- THIS LOADS YOUR LOCAL IMAGE -->
