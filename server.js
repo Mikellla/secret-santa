@@ -334,27 +334,54 @@ hr{border:0;border-top:1px solid rgba(255,255,255,0.1);margin:24px 0}
 .install-btn{background:linear-gradient(180deg,#e7b84d,#c58a22);color:#111827;box-shadow:none;margin-top:10px}
 .profile-input{margin:0 0 12px}
 
-/* Mobile: remove the frosted-glass layer so the portrait background remains visible */
+/* Mobile: balance background visibility with readable content */
 @media (max-width:480px){
   .bg-overlay{background:transparent}
   main{
-    background:rgba(20,25,45,.08);
-    border-color:rgba(255,255,255,.12);
-    backdrop-filter:none;
-    -webkit-backdrop-filter:none;
-    box-shadow:0 12px 32px rgba(0,0,0,.22);
+    background:rgba(12,20,39,.22);
+    border-color:rgba(255,255,255,.18);
+    backdrop-filter:blur(6px);
+    -webkit-backdrop-filter:blur(6px);
+    box-shadow:0 12px 32px rgba(0,0,0,.28);
   }
   .row,.app-card{
-    background:rgba(5,12,28,.10);
-    backdrop-filter:none;
-    -webkit-backdrop-filter:none;
+    background:rgba(5,12,28,.34);
+    border-color:rgba(255,255,255,.16);
+    backdrop-filter:blur(4px);
+    -webkit-backdrop-filter:blur(4px);
   }
-  .app-link-row{background:rgba(0,0,0,.10)}
-  input,textarea{background:rgba(10,15,30,.16)}
+  .app-link-row{
+    background:rgba(0,0,0,.30);
+    border-color:rgba(255,255,255,.17);
+  }
+  input,textarea{
+    background:rgba(5,12,28,.48);
+    border-color:rgba(255,255,255,.24);
+    color:#fff;
+    text-shadow:0 1px 2px rgba(0,0,0,.35);
+  }
+  input::placeholder,textarea::placeholder{color:rgba(255,255,255,.78)}
+  label,.muted,.app-intro,.app-card p,.tag{
+    color:#f1f5ff;
+    text-shadow:0 1px 3px rgba(0,0,0,.85);
+  }
+  h1,h2,h3,.name,.banner,.big{
+    text-shadow:0 2px 5px rgba(0,0,0,.72);
+  }
   .bottom-nav{
-    background:rgba(5,13,29,.68);
-    backdrop-filter:none;
-    -webkit-backdrop-filter:none;
+    background:rgba(5,13,29,.86);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    border-top-color:rgba(255,209,102,.34);
+  }
+  .bottom-nav a{
+    color:#d8e2f2;
+    text-shadow:0 1px 2px rgba(0,0,0,.6);
+  }
+  .bottom-nav a.active{color:#ffd166}
+  button.secondary{
+    background:rgba(5,12,28,.48);
+    border-color:rgba(255,255,255,.28);
   }
 }
 </style></head><body>
